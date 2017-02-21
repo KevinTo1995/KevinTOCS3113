@@ -5,6 +5,8 @@
 #include <SDL.h>
 #include <SDL_opengl.h>
 #include <SDL_image.h>
+#include <ctime>
+
 #include "Matrix.h"
 #include "ShaderProgram.h"
 
@@ -19,6 +21,45 @@
 #endif
 
 SDL_Window* displayWindow;
+
+// Paddle class
+class Paddle {
+public:
+	Paddle(float lt, float rt, float tp, float bt) : left(lt), right(rt), top(tp), bottom(bt) {}
+
+	float left;
+	float right;
+	float top;
+	float bottom;
+};
+
+// Ball class
+class Ball {
+public:
+	Ball(float posX, float posY, float vel, float spd, float acc, float dirX, float dirY) : positionX(posX), positionY(posY), speed(spd), accel(acc), directionX(dirX), directionY(dirY) {}
+	Ball() {}
+
+	float positionX = 0.0f;
+	float positionY = 0.0f;
+	float speed = 0.4f;
+	float accel = 5.0f;
+	float directionX = (float)(rand() % 5 + 1);
+	float directionY = (float)(rand() % 5 + 1);
+
+	void reset() {
+		positionX = 0.0f;
+		positionY = 0.0f;
+		speed = 0.4f;
+		accel = 5.0f;
+		directionX = (float)(rand() % 5 + 1);
+		directionY = (float)(rand() % 5 + 1);
+	}
+
+	void move(float elapsed) {
+		positionX += (speed * directionX * elapsed);
+		positionY += (speed * directionY * elapsed);
+	}
+};
 
 GLuint LoadTexture(const char *filePath) {
 	int w, h, comp;
@@ -42,10 +83,11 @@ GLuint LoadTexture(const char *filePath) {
 	return retTexture;
 }
 
+
 int main(int argc, char *argv[])
 {
 	SDL_Init(SDL_INIT_VIDEO);
-	displayWindow = SDL_CreateWindow("Heavyarms Attacking", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 360, SDL_WINDOW_OPENGL);
+	displayWindow = SDL_CreateWindow("Pong, Kevin To", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 360, SDL_WINDOW_OPENGL);
 	SDL_GLContext context = SDL_GL_CreateContext(displayWindow);
 	SDL_GL_MakeCurrent(displayWindow, context);
 #ifdef _WINDOWS
@@ -57,230 +99,172 @@ int main(int argc, char *argv[])
 	ShaderProgram program(RESOURCE_FOLDER"vertex_textured.glsl", RESOURCE_FOLDER"fragment_textured.glsl");
 
 	Matrix projectionMatrix;;
-	Matrix modelMatrix;
+	Matrix leftPaddleMatrix;
+	Matrix rightPaddleMatrix;
+	Matrix ballMatrix;
 	Matrix viewMatrix;
 
-	projectionMatrix.setOrthoProjection(-3.55f, 3.55f, -2.0f, 2.0f, -1.0f, 1.0f);
+	projectionMatrix.setOrthoProjection(-3.6f, 3.6f, -2.25f, 2.25f, -1.0f, 1.0f);
 
-	GLuint roboTexture = LoadTexture(RESOURCE_FOLDER"heavy.png");
-	GLuint gatlingTexture = LoadTexture(RESOURCE_FOLDER"gat.png");
-	GLuint miniTexture = LoadTexture(RESOURCE_FOLDER"miniGat.png");
+	//Texture for Paddle and  Ball
+	GLuint green = LoadTexture(RESOURCE_FOLDER"green.png");
+	GLuint blue = LoadTexture(RESOURCE_FOLDER"blue.png");
+	GLuint white = LoadTexture(RESOURCE_FOLDER"white.png");
 
-	float roboPosition = 0.0f;
-	float gatPosition = 0.0f;
-	float miniPosition = 0.0f;
+	Paddle leftPaddle(-3.5f, -3.4f, 0.5f, -0.5f);
+	Paddle rightPaddle(3.4f, 3.5f, 0.5f, -0.5f);
+	Ball ball = Ball();
 
-	float angle = 0.0f;
-
-	glClearColor(0.529f, 0.808f, 0.980f, 0.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	float last_frame_ticks = 0.0f;
+	float lastFrameTicks = 0.0f;
 
 	SDL_Event event;
 	bool done = false;
+	bool gameRunning = false;
 	while (!done) {
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		//game controls
 		while (SDL_PollEvent(&event)) {
+
+			//closing
 			if (event.type == SDL_QUIT || event.type == SDL_WINDOWEVENT_CLOSE) {
 				done = true;
 			}
+			if (event.type == SDL_KEYDOWN) {
+				// Game Start
+				if (event.key.keysym.scancode == SDL_SCANCODE_SPACE && !gameRunning)
+					gameRunning = true;
+
+				// Left Paddle
+				if (event.key.keysym.scancode == SDL_SCANCODE_W && leftPaddle.top < 2.25f) {
+					leftPaddle.top += 0.5f;
+					leftPaddle.bottom += 0.5f;
+					leftPaddleMatrix.Translate(0.0f, 0.5f, 0.0f);
+				}
+				else if (event.key.keysym.scancode == SDL_SCANCODE_S && leftPaddle.bottom > -2.25f) {
+					leftPaddle.top -= 0.5f;
+					leftPaddle.bottom -= 0.5f;
+					leftPaddleMatrix.Translate(0.0f, -0.5f, 0.0f);
+				}
+
+				// Right Paddle
+				if (event.key.keysym.scancode == SDL_SCANCODE_UP && rightPaddle.top < 2.25f) {
+					rightPaddle.top += 0.5f;
+					rightPaddle.bottom += 0.5f;
+					rightPaddleMatrix.Translate(0.0f, 0.5f, 0.0f);
+				}
+				else if (event.key.keysym.scancode == SDL_SCANCODE_DOWN && rightPaddle.bottom > -2.25f) {
+					rightPaddle.top -= 0.5f;
+					rightPaddle.bottom -= 0.5f;
+					rightPaddleMatrix.Translate(0.0f, -0.5f, 0.0f);
+				}
+			}
 		}
+		//Drawing Paddles and Ball
 
-		float ticks = (float)SDL_GetTicks() / 1000.0f;
-		float elapsed = ticks - last_frame_ticks;
-		last_frame_ticks = ticks;
-
-		angle += (3.141592653f / 512);
-
-
-		program.setModelMatrix(modelMatrix);
 		program.setProjectionMatrix(projectionMatrix);
 		program.setViewMatrix(viewMatrix);
 
 		glClear(GL_COLOR_BUFFER_BIT);
-
 		glUseProgram(program.programID);
 
-		//Building Robot
-		modelMatrix.identity();
+		float globalTextureCoords[] = { 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f };
 
-		program.setModelMatrix(modelMatrix);
-
-		float roboVertices[] = { -2.5, -2.0, 2.5, -2.0, 2.5, 2.0, -2.5, -2.0, 2.5, 2.0, -2.5, 2.0 };
-
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, roboVertices);
+		//left paddle
+		program.setModelMatrix(leftPaddleMatrix);
+		float leftPaddleCoords[] = { -3.5f, -0.5f, -3.4f, -0.5f, -3.4f, 0.5f, -3.4f, 0.5f, -3.5f, 0.5f, -3.5f, -0.5f };
+		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, leftPaddleCoords);
 		glEnableVertexAttribArray(program.positionAttribute);
-
-		float roboTexCoords[] = {0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0 };
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, roboTexCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-
-		glBindTexture(GL_TEXTURE_2D, roboTexture);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
+		glEnableVertexAttribArray(program.texCoordAttribute);
+		glBindTexture(GL_TEXTURE_2D, blue);
 
 		glDisableVertexAttribArray(program.positionAttribute);
 		glDisableVertexAttribArray(program.texCoordAttribute);
 
-		//Building Gatling top right
-		modelMatrix.identity(); 
-		modelMatrix.Translate(1.27, 0.30, 0.0);
-		modelMatrix.Rotate(angle);
-		modelMatrix.Translate(0.0, 0.0, 0.0);
-		program.setModelMatrix(modelMatrix);
-
-		float gatVertices[] = { -2.5, -2.0, 2.5, -2.0, 2.5, 2.0, -2.5, -2.0, 2.5, 2.0, -2.5, 2.0 };
-
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, gatVertices);
+		// right paddle
+		program.setModelMatrix(rightPaddleMatrix);
+		float rightPaddleCoords[] = { 3.4f, -0.5f, 3.5f, -0.5f, 3.5f, 0.5f, 3.5f, 0.5f, 3.4f, 0.5f, 3.4f, -0.5f };
+		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, rightPaddleCoords);
 		glEnableVertexAttribArray(program.positionAttribute);
-
-		float gatTexCoords[] = { 1.0, 1.0, 2.0, 1.0, 2.0, 0.0, 1.0, 1.0, 2.0, 0.0, 1.0, 0.0 };
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, gatTexCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-
-		glBindTexture(GL_TEXTURE_2D, gatlingTexture);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
+		glEnableVertexAttribArray(program.texCoordAttribute);
+		glBindTexture(GL_TEXTURE_2D, white);
 
 		glDisableVertexAttribArray(program.positionAttribute);
 		glDisableVertexAttribArray(program.texCoordAttribute);
 
-		//Building Gatling bottom right
-		modelMatrix.identity();
-		modelMatrix.Translate(1.27, -0.32, 0.0);
-		modelMatrix.Rotate(angle);
-		modelMatrix.Translate(0.0, 0.0, 0.0);
-		program.setModelMatrix(modelMatrix);
-
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, gatVertices);
+		// ball
+		program.setModelMatrix(ballMatrix);
+		float ballCoords[] = { -0.1f, -0.1f, 0.1f, -0.1f, 0.1f, 0.1f, 0.1f, 0.1f, -0.1f, 0.1f, -0.1f, -0.1f };
+		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, ballCoords);
 		glEnableVertexAttribArray(program.positionAttribute);
-
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, gatTexCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-
-		glBindTexture(GL_TEXTURE_2D, gatlingTexture);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
-		glDisableVertexAttribArray(program.positionAttribute);
-		glDisableVertexAttribArray(program.texCoordAttribute);
-
-		//Building Gatling top left
-		modelMatrix.identity();
-		modelMatrix.Translate(-1.48, 0.30, 0.0);
-		modelMatrix.Rotate(angle);
-		modelMatrix.Translate(0.0, 0.0, 0.0);
-		program.setModelMatrix(modelMatrix);
-
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, gatVertices);
-		glEnableVertexAttribArray(program.positionAttribute);
-
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, gatTexCoords);
+		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
 		glEnableVertexAttribArray(program.texCoordAttribute);
-
-		glBindTexture(GL_TEXTURE_2D, gatlingTexture);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		glDisableVertexAttribArray(program.positionAttribute);
-		glDisableVertexAttribArray(program.texCoordAttribute);
-
-		//Building Gatling bottom left
-		modelMatrix.identity();
-		modelMatrix.Translate(-1.48, -0.32, 0.0);
-		modelMatrix.Rotate(angle);
-		modelMatrix.Translate(0.0, 0.0, 0.0);
-		program.setModelMatrix(modelMatrix);
-
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, gatVertices);
-		glEnableVertexAttribArray(program.positionAttribute);
-
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, gatTexCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-
-		glBindTexture(GL_TEXTURE_2D, gatlingTexture);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		glDisableVertexAttribArray(program.positionAttribute);
-		glDisableVertexAttribArray(program.texCoordAttribute);
-
-		//Building mini Gatling top left
-		modelMatrix.identity();
-		modelMatrix.Translate(0.05, 0.16, 0.0);
-		modelMatrix.Rotate(angle);
-		modelMatrix.Translate(0.0, 0.0, 0.0);
-		program.setModelMatrix(modelMatrix);
-
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, gatVertices);
-		glEnableVertexAttribArray(program.positionAttribute);
-
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, gatTexCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-
-		glBindTexture(GL_TEXTURE_2D, miniTexture);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindTexture(GL_TEXTURE_2D, green);
 
 		glDisableVertexAttribArray(program.positionAttribute);
 		glDisableVertexAttribArray(program.texCoordAttribute);
 
 
-		//Building mini Gatling top right
-		modelMatrix.identity();
-		modelMatrix.Translate(-.25, 0.16, 0.0);
-		modelMatrix.Rotate(angle);
-		modelMatrix.Translate(0.0, 0.0, 0.0);
-		program.setModelMatrix(modelMatrix);
+		float ticks = (float)SDL_GetTicks() / 1000.0f;
+		float elapsed = ticks - lastFrameTicks;
+		lastFrameTicks = ticks;
 
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, gatVertices);
-		glEnableVertexAttribArray(program.positionAttribute);
+		if (gameRunning)
+		{
+			// Paddle Collision
+			if (ball.positionX <= leftPaddle.right && ball.positionY <= leftPaddle.top && ball.positionY >= leftPaddle.bottom ||
+				ball.positionX >= rightPaddle.left && ball.positionY <= rightPaddle.top && ball.positionY >= rightPaddle.bottom)
+			{
+				ball.directionX *= -1;
+				ball.speed += ball.accel * elapsed;
+				ball.move(elapsed);
+				ballMatrix.Translate((ball.speed * ball.directionX* elapsed), (ball.speed * ball.directionY* elapsed), 0.0f);
+			}
+			// Right side wins, screen turns blue
+			else if (ball.positionX <= leftPaddle.left)
+			{
+				gameRunning = false;
+				ballMatrix.Translate(-ball.positionX, -ball.positionY, 0.0f);
+				ball.reset();
+				glClearColor(0.0, 0.0, 0.5, 0.0);
+			}
 
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, gatTexCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
+			// Left side wins, screen turns green
+			else if (ball.positionX >= rightPaddle.right)
+			{
+				gameRunning = false;
+				ballMatrix.Translate(-ball.positionX, -ball.positionY, 0.0f);
+				ball.reset();
+				glClearColor(0.0, 0.5, 0.0, 0.0);\
+			}
 
-		glBindTexture(GL_TEXTURE_2D, miniTexture);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
+			// Wall Collisions
+			else if (ball.positionY + 0.1f >= 2.25f || ball.positionY - 0.1f <= -2.25f)
+			{
+				ball.directionY *= -1;
+				ball.speed += ball.accel* elapsed;
+				ball.move(elapsed);
+				ballMatrix.Translate(ball.speed * ball.positionX* elapsed, ball.speed * ball.positionY* elapsed, 0.0f);
+			}
 
-		glDisableVertexAttribArray(program.positionAttribute);
-		glDisableVertexAttribArray(program.texCoordAttribute);
-
-		//Building mini Gatling bottom left
-		modelMatrix.identity();
-		modelMatrix.Translate(-.47, 0.08, 0.0);
-		modelMatrix.Rotate(angle);
-		modelMatrix.Translate(0.0, 0.0, 0.0);
-		program.setModelMatrix(modelMatrix);
-
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, gatVertices);
-		glEnableVertexAttribArray(program.positionAttribute);
-
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, gatTexCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-
-		glBindTexture(GL_TEXTURE_2D, miniTexture);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		glDisableVertexAttribArray(program.positionAttribute);
-		glDisableVertexAttribArray(program.texCoordAttribute);
-
-		//Building mini Gatling bottom right
-		modelMatrix.identity();
-		modelMatrix.Translate(.28, 0.08, 0.0);
-		modelMatrix.Rotate(angle);
-		modelMatrix.Translate(0.0, 0.0, 0.0);
-		program.setModelMatrix(modelMatrix);
-
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, gatVertices);
-		glEnableVertexAttribArray(program.positionAttribute);
-
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, gatTexCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-
-		glBindTexture(GL_TEXTURE_2D, miniTexture);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		glDisableVertexAttribArray(program.positionAttribute);
-		glDisableVertexAttribArray(program.texCoordAttribute);
-
-
+			// Ball Movement
+			else
+			{
+				ball.move(elapsed);
+				ballMatrix.Translate((ball.speed * ball.directionX* elapsed), (ball.speed * ball.directionY* elapsed), 0.0f);
+			}
+		}
 		SDL_GL_SwapWindow(displayWindow);
+
 	}
 
 	SDL_Quit();
