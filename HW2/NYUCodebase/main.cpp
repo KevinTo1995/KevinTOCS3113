@@ -1,3 +1,19 @@
+/*
+Kevin To CS3113 Homework 2
+Make PONG!
+• Doesn’t need to keep score.
+• But it must detect player wins.
+• Can use images or untextured polygons.
+• Can use keyboard, mouse or joystick input.
+
+Left Player uses Green Paddle.
+Paddle is controlled with W to move up and S to move down
+When Left player wins, screen turns green.
+
+Right Player uses Blue Padlle.
+Paddle is controlled with Up Arrow to move up and Down Arrow to move down
+When Right player wins, screen turns blue.
+*/
 
 #ifdef _WINDOWS
 #include <GL/glew.h>
@@ -43,16 +59,16 @@ public:
 	float positionY = 0.0f;
 	float speed = 0.4f;
 	float accel = 5.0f;
-	float directionX = (float)(rand() % 5 + 1);
-	float directionY = (float)(rand() % 5 + 1);
+	float directionX = (float)(rand() % 8 - 5);
+	float directionY = (float)(rand() % 10 - 5);
 
 	void reset() {
 		positionX = 0.0f;
 		positionY = 0.0f;
 		speed = 0.4f;
 		accel = 5.0f;
-		directionX = (float)(rand() % 5 + 1);
-		directionY = (float)(rand() % 5 + 1);
+		directionX = (float)(rand() % 8 - 5);
+		directionY = (float)(rand() % 10 - 5);
 	}
 
 	void move(float elapsed) {
@@ -119,7 +135,7 @@ int main(int argc, char *argv[])
 
 	SDL_Event event;
 	bool done = false;
-	bool gameRunning = false;
+	bool gameStatus = false;
 	while (!done) {
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -133,8 +149,8 @@ int main(int argc, char *argv[])
 			}
 			if (event.type == SDL_KEYDOWN) {
 				// Game Start
-				if (event.key.keysym.scancode == SDL_SCANCODE_SPACE && !gameRunning)
-					gameRunning = true;
+				if (event.key.keysym.scancode == SDL_SCANCODE_SPACE && !gameStatus)
+					gameStatus = true;
 
 				// Left Paddle
 				if (event.key.keysym.scancode == SDL_SCANCODE_W && leftPaddle.top < 2.25f) {
@@ -218,7 +234,7 @@ int main(int argc, char *argv[])
 		float elapsed = ticks - lastFrameTicks;
 		lastFrameTicks = ticks;
 
-		if (gameRunning)
+		if (gameStatus)
 		{
 			// Paddle Collision
 			if (ball.positionX <= leftPaddle.right && ball.positionY <= leftPaddle.top && ball.positionY >= leftPaddle.bottom ||
@@ -230,18 +246,18 @@ int main(int argc, char *argv[])
 				ballMatrix.Translate((ball.speed * ball.directionX* elapsed), (ball.speed * ball.directionY* elapsed), 0.0f);
 			}
 			// Right side wins, screen turns blue
-			else if (ball.positionX <= leftPaddle.left)
+			else if (ball.positionX + .01f<= leftPaddle.left)
 			{
-				gameRunning = false;
+				gameStatus = false;
 				ballMatrix.Translate(-ball.positionX, -ball.positionY, 0.0f);
 				ball.reset();
 				glClearColor(0.0, 0.0, 0.5, 0.0);
 			}
 
 			// Left side wins, screen turns green
-			else if (ball.positionX >= rightPaddle.right)
+			else if (ball.positionX - .01f >= rightPaddle.right)
 			{
-				gameRunning = false;
+				gameStatus = false;
 				ballMatrix.Translate(-ball.positionX, -ball.positionY, 0.0f);
 				ball.reset();
 				glClearColor(0.0, 0.5, 0.0, 0.0);\
