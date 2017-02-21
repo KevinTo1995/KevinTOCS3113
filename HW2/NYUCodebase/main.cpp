@@ -52,12 +52,12 @@ public:
 // Ball class
 class Ball {
 public:
-	Ball(float posX, float posY, float vel, float spd, float acc, float dirX, float dirY) : positionX(posX), positionY(posY), speed(spd), accel(acc), directionX(dirX), directionY(dirY) {}
+	Ball(float posX, float posY, float spd, float acc, float dirX, float dirY) : positionX(posX), positionY(posY), speed(spd), accel(acc), directionX(dirX), directionY(dirY) {}
 	Ball() {}
 
 	float positionX = 0.0f;
 	float positionY = 0.0f;
-	float speed = 0.4f;
+	float speed = 0.5f;
 	float accel = 5.0f;
 	float directionX = (float)(rand() % 8 - 5);
 	float directionY = (float)(rand() % 10 - 5);
@@ -65,7 +65,7 @@ public:
 	void reset() {
 		positionX = 0.0f;
 		positionY = 0.0f;
-		speed = 0.4f;
+		speed = 0.5f;
 		accel = 5.0f;
 		directionX = (float)(rand() % 8 - 5);
 		directionY = (float)(rand() % 10 - 5);
@@ -246,16 +246,16 @@ int main(int argc, char *argv[])
 				ballMatrix.Translate((ball.speed * ball.directionX* elapsed), (ball.speed * ball.directionY* elapsed), 0.0f);
 			}
 			// Right side wins, screen turns blue
-			else if (ball.positionX + .01f<= leftPaddle.left)
+			else if (ball.positionX <= leftPaddle.left)
 			{
 				gameStatus = false;
 				ballMatrix.Translate(-ball.positionX, -ball.positionY, 0.0f);
 				ball.reset();
 				glClearColor(0.0, 0.0, 0.5, 0.0);
 			}
-
+			 
 			// Left side wins, screen turns green
-			else if (ball.positionX - .01f >= rightPaddle.right)
+			else if (ball.positionX >= rightPaddle.right)
 			{
 				gameStatus = false;
 				ballMatrix.Translate(-ball.positionX, -ball.positionY, 0.0f);
@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
 			}
 
 			// Wall Collisions
-			else if (ball.positionY + 0.1f >= 2.25f || ball.positionY - 0.1f <= -2.25f)
+			else if (ball.positionY >= 2.25f || ball.positionY <= -2.25f)
 			{
 				ball.directionY *= -1;
 				ball.speed += ball.accel* elapsed;
