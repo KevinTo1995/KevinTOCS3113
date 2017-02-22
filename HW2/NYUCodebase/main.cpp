@@ -120,15 +120,16 @@ int main(int argc, char *argv[])
 	Matrix ballMatrix;
 	Matrix viewMatrix;
 
-	projectionMatrix.setOrthoProjection(-3.6f, 3.6f, -2.25f, 2.25f, -1.0f, 1.0f);
+	projectionMatrix.setOrthoProjection(-4.25f, 4.25f, -2.25f, 2.25f, -1.0f, 1.0f);
 
 	//Texture for Paddle and  Ball
 	GLuint green = LoadTexture(RESOURCE_FOLDER"green.png");
 	GLuint blue = LoadTexture(RESOURCE_FOLDER"blue.png");
 	GLuint white = LoadTexture(RESOURCE_FOLDER"white.png");
 
-	Paddle leftPaddle(-3.5f, -3.4f, 0.5f, -0.5f);
-	Paddle rightPaddle(3.4f, 3.5f, 0.5f, -0.5f);
+	//Paddle and Ball Object Initialized
+	Paddle leftPaddle(-4.0f, -3.9f, 0.5f, -0.5f);
+	Paddle rightPaddle(3.9f, 4.0f, 0.5f, -0.5f);
 	Ball ball = Ball();
 
 	float lastFrameTicks = 0.0f;
@@ -140,6 +141,59 @@ int main(int argc, char *argv[])
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+		//Drawing Paddles and Ball
+
+		program.setProjectionMatrix(projectionMatrix);
+		program.setViewMatrix(viewMatrix);
+
+		glClear(GL_COLOR_BUFFER_BIT);
+		glUseProgram(program.programID);
+
+		float globalTextureCoords[] = { 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f };
+
+		//left paddle
+		program.setModelMatrix(leftPaddleMatrix);
+		float leftPaddleCoords[] = { -4.0f, -0.5f, -3.9f, -0.5f, -3.9f, 0.5f, -3.9f, 0.5f, -4.0f, 0.5f, -4.0f, -0.5f };
+		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, leftPaddleCoords);
+		glEnableVertexAttribArray(program.positionAttribute);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
+		glEnableVertexAttribArray(program.texCoordAttribute);
+		glBindTexture(GL_TEXTURE_2D, blue);
+
+		glDisableVertexAttribArray(program.positionAttribute);
+		glDisableVertexAttribArray(program.texCoordAttribute);
+
+		// right paddle
+		program.setModelMatrix(rightPaddleMatrix);
+		float rightPaddleCoords[] = { 3.9f, -0.5f, 4.0f, -0.5f, 4.0f, 0.5f, 4.0f, 0.5f, 3.9f, 0.5f, 3.9f, -0.5f };
+		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, rightPaddleCoords);
+		glEnableVertexAttribArray(program.positionAttribute);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
+		glEnableVertexAttribArray(program.texCoordAttribute);
+		glBindTexture(GL_TEXTURE_2D, white);
+
+		glDisableVertexAttribArray(program.positionAttribute);
+		glDisableVertexAttribArray(program.texCoordAttribute);
+
+		// ball
+		program.setModelMatrix(ballMatrix);
+		float ballCoords[] = { -0.1f, -0.1f, 0.1f, -0.1f, 0.1f, 0.1f, 0.1f, 0.1f, -0.1f, 0.1f, -0.1f, -0.1f };
+		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, ballCoords);
+		glEnableVertexAttribArray(program.positionAttribute);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		float gatTexCoords[] = { 1.0, 1.0, 2.0, 1.0, 2.0, 0.0, 1.0, 1.0, 2.0, 0.0, 1.0, 0.0 };
+		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, gatTexCoords);
+		glEnableVertexAttribArray(program.texCoordAttribute);
+		glBindTexture(GL_TEXTURE_2D, green);
+
+		glDisableVertexAttribArray(program.positionAttribute);
+		glDisableVertexAttribArray(program.texCoordAttribute);
+
 		//game controls
 		while (SDL_PollEvent(&event)) {
 
@@ -148,6 +202,7 @@ int main(int argc, char *argv[])
 				done = true;
 			}
 			if (event.type == SDL_KEYDOWN) {
+
 				// Game Start
 				if (event.key.keysym.scancode == SDL_SCANCODE_SPACE && !gameStatus)
 					gameStatus = true;
@@ -177,58 +232,6 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
-		//Drawing Paddles and Ball
-
-		program.setProjectionMatrix(projectionMatrix);
-		program.setViewMatrix(viewMatrix);
-
-		glClear(GL_COLOR_BUFFER_BIT);
-		glUseProgram(program.programID);
-
-		float globalTextureCoords[] = { 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f };
-
-		//left paddle
-		program.setModelMatrix(leftPaddleMatrix);
-		float leftPaddleCoords[] = { -3.5f, -0.5f, -3.4f, -0.5f, -3.4f, 0.5f, -3.4f, 0.5f, -3.5f, 0.5f, -3.5f, -0.5f };
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, leftPaddleCoords);
-		glEnableVertexAttribArray(program.positionAttribute);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-		glBindTexture(GL_TEXTURE_2D, blue);
-
-		glDisableVertexAttribArray(program.positionAttribute);
-		glDisableVertexAttribArray(program.texCoordAttribute);
-
-		// right paddle
-		program.setModelMatrix(rightPaddleMatrix);
-		float rightPaddleCoords[] = { 3.4f, -0.5f, 3.5f, -0.5f, 3.5f, 0.5f, 3.5f, 0.5f, 3.4f, 0.5f, 3.4f, -0.5f };
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, rightPaddleCoords);
-		glEnableVertexAttribArray(program.positionAttribute);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-		glBindTexture(GL_TEXTURE_2D, white);
-
-		glDisableVertexAttribArray(program.positionAttribute);
-		glDisableVertexAttribArray(program.texCoordAttribute);
-
-		// ball
-		program.setModelMatrix(ballMatrix);
-		float ballCoords[] = { -0.1f, -0.1f, 0.1f, -0.1f, 0.1f, 0.1f, 0.1f, 0.1f, -0.1f, 0.1f, -0.1f, -0.1f };
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, ballCoords);
-		glEnableVertexAttribArray(program.positionAttribute);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-		glBindTexture(GL_TEXTURE_2D, green);
-
-		glDisableVertexAttribArray(program.positionAttribute);
-		glDisableVertexAttribArray(program.texCoordAttribute);
-
 
 		float ticks = (float)SDL_GetTicks() / 1000.0f;
 		float elapsed = ticks - lastFrameTicks;
@@ -264,7 +267,7 @@ int main(int argc, char *argv[])
 			}
 
 			// Wall Collisions
-			else if (ball.positionY >= 2.25f || ball.positionY <= -2.25f)
+			else if (ball.positionY >= 2.15f || ball.positionY <= -2.15f)
 			{
 				ball.directionY *= -1;
 				ball.speed += ball.accel* elapsed;
