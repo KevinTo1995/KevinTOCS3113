@@ -1,0 +1,8 @@
+<TextureAtlas imagePath="sprites.png">
+	<SubTexture name="213ivsk_24.png" x="0" y="91" width="79" height="100"/>
+	<SubTexture name="213ivsk_40.png" x="0" y="193" width="32" height="30"/>
+	<SubTexture name="HeavyArms_05.png" x="0" y="0" width="96" height="89"/>
+	<SubTexture name="HeavyArms_08.png" x="0" y="225" width="16" height="10"/>
+</TextureAtlas>
+
+128 x 256
