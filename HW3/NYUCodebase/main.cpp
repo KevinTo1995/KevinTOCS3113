@@ -1,18 +1,19 @@
 /*
-Kevin To CS3113 Homework 2
-Make PONG!
-• Doesn’t need to keep score.
-• But it must detect player wins.
-• Can use images or untextured polygons.
-• Can use keyboard, mouse or joystick input.
+Kevin To CS3113 Homework 3
+Gundam Defenders "Space Invaders"
+• Make Space Invaders
+• It must have 2 states: TITLE SCREEN, GAME
+• It must display text
+• It must use sprite sheets
+• You can use any graphics you want (it doesn’thave to be in space! :)
 
-Left Player uses Green Paddle.
-Paddle is controlled with W to move up and S to move down
-When Left player wins, screen turns green.
+Has three states: Main Menu State, Game State and Game Over State.
+Player Instructions:
+Press Space to Start game.
+Use Arrow Keys to move UP,DOWN,LEFT, and Right.
+Press Space to shoot.
+Eliminate all Vayeates to win.
 
-Right Player uses Blue Padlle.
-Paddle is controlled with Up Arrow to move up and Down Arrow to move down
-When Right player wins, screen turns blue.
 */
 
 #ifdef _WINDOWS
@@ -22,6 +23,7 @@ When Right player wins, screen turns blue.
 #include <SDL_opengl.h>
 #include <SDL_image.h>
 #include <ctime>
+#include <vector>
 
 #include "Matrix.h"
 #include "ShaderProgram.h"
@@ -36,46 +38,38 @@ When Right player wins, screen turns blue.
 #define RESOURCE_FOLDER "NYUCodebase.app/Contents/Resources/"
 #endif
 
+// SDL,Object Matrix, and Global values
 SDL_Window* displayWindow;
 
-// Paddle class
-class Paddle {
-public:
-	Paddle(float lt, float rt, float tp, float bt) : left(lt), right(rt), top(tp), bottom(bt) {}
+GLuint fontSheet;
+GLuint spriteSheet;
+GLuint background;
 
-	float left;
-	float right;
-	float top;
-	float bottom;
-};
+Matrix projectionMatrix;
+Matrix viewMatrix;
+Matrix modelMatrix;
 
-// Ball class
-class Ball {
-public:
-	Ball(float posX, float posY, float spd, float acc, float dirX, float dirY) : positionX(posX), positionY(posY), speed(spd), accel(acc), directionX(dirX), directionY(dirY) {}
-	Ball() {}
+float globalTextureCoords[] = { 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f };
+enum GameState { STATE_MAIN_MENU, STATE_GAME_LEVEL,STATE_GAME_OVER };
+bool gameRunning = true;
+bool playerWins = false;
+enum Type { PLAYER, VAYEATE };
 
-	float positionX = 0.0f;
-	float positionY = 0.0f;
-	float speed = 0.5f;
-	float accel = 5.0f;
-	float directionX = (float)(rand() % 8 - 5);
-	float directionY = (float)(rand() % 10 - 5);
+//Time Values
+float lastFrameTicks = 0.0f;
+float elapsed;
+float playerLastShot = 0.0f;
+float enemyLastShot = 0.0f;
 
-	void reset() {
-		positionX = 0.0f;
-		positionY = 0.0f;
-		speed = 0.5f;
-		accel = 5.0f;
-		directionX = (float)(rand() % 8 - 5);
-		directionY = (float)(rand() % 10 - 5);
-	}
+//Control Bools
+bool moveUp = false;
+bool moveDown = false;
+bool moveLeft = false;
+bool moveRight = false;
+bool shootBullet = false;
 
-	void move(float elapsed) {
-		positionX += (speed * directionX * elapsed);
-		positionY += (speed * directionY * elapsed);
-	}
-};
+int gameState;
+ShaderProgram* program;
 
 GLuint LoadTexture(const char *filePath) {
 	int w, h, comp;
@@ -99,11 +93,438 @@ GLuint LoadTexture(const char *filePath) {
 	return retTexture;
 }
 
+//Draw Text Function
+void DrawText(ShaderProgram* program, int fontTexture, std::string text, float size, float spacing) {
+	float texture_size = 1.0 / 16.0f;
+	std::vector<float> vertexData;
+	std::vector<float> texCoordData;
 
+	for (int i = 0; i < text.size(); i++) {
+
+		int spriteIndex = (int)text[i];
+
+		float texture_x = (float)(((int)text[i]) % 16) / 16.0f;
+		float texture_y = (float)(((int)text[i]) / 16) / 16.0f;
+
+		vertexData.insert(vertexData.end(), {
+			((size + spacing) * i) + (-0.5f * size), 0.5f * size,
+			((size + spacing) * i) + (-0.5f * size), -0.5f * size,
+			((size + spacing) * i) + (0.5f * size), 0.5f * size,
+			((size + spacing) * i) + (0.5f * size), -0.5f * size,
+			((size + spacing) * i) + (0.5f * size), 0.5f * size,
+			((size + spacing) * i) + (-0.5f * size), -0.5f * size,
+		});
+		texCoordData.insert(texCoordData.end(), {
+			texture_x, texture_y,
+			texture_x, texture_y + texture_size,
+			texture_x + texture_size, texture_y,
+			texture_x + texture_size, texture_y + texture_size,
+			texture_x + texture_size, texture_y,
+			texture_x, texture_y + texture_size,
+		});
+	}
+	glUseProgram(program->programID);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	glVertexAttribPointer(program->positionAttribute, 2, GL_FLOAT, false, 0, vertexData.data());
+	glEnableVertexAttribArray(program->positionAttribute);
+	glVertexAttribPointer(program->texCoordAttribute, 2, GL_FLOAT, false, 0, texCoordData.data());
+	glEnableVertexAttribArray(program->texCoordAttribute);
+	glBindTexture(GL_TEXTURE_2D, fontTexture);
+	glDrawArrays(GL_TRIANGLES, 0, text.size() * 6);
+	glDisableVertexAttribArray(program->positionAttribute);
+	glDisableVertexAttribArray(program->texCoordAttribute);
+}
+
+//Class Entity
+class Entity {
+public:
+	float positionX, positionY;
+	float top, bottom, left, right;
+	float speedX, speedY;
+	float u;
+	float v;
+	float width;
+	float height;
+	float size = 1.0f;
+	Type type;
+	Matrix entityMatrix;
+
+	Entity() {}
+
+	Entity(float x, float y, float spriteU, float spriteV, float spriteWidth, float spriteHeight, float dx, float dy) {
+		positionX = x;
+		positionY = y;
+		speedX = dx;
+		speedY = dy;
+		top = y + 0.1f * size;
+		bottom = y - 0.1f * size;
+		right = x + 0.05f * size;
+		left = x - 0.05f * size;
+		u = spriteU;
+		v = spriteV;
+		width = spriteWidth;
+		height = spriteHeight;
+		entityMatrix.identity();
+		entityMatrix.Translate(x, y, 0);
+	}
+
+	void draw() {
+		entityMatrix.identity();
+		entityMatrix.Translate(positionX, positionY, 0);
+		program->setModelMatrix(entityMatrix);
+
+		std::vector<float> vertexData;
+		std::vector<float> texCoordData;
+		float texture_x = u;
+		float texture_y = v;
+		vertexData.insert(vertexData.end(), {
+			(-0.1f * size), 0.1f * size,
+			(-0.1f * size), -0.1f * size,
+			(0.1f * size), 0.1f * size,
+			(0.1f * size), -0.1f * size,
+			(0.1f * size), 0.1f * size,
+			(-0.1f * size), -0.1f * size,
+		});
+		texCoordData.insert(texCoordData.end(), {
+			texture_x, texture_y,
+			texture_x, texture_y + height,
+			texture_x + width, texture_y,
+			texture_x + width, texture_y + height,
+			texture_x + width, texture_y,
+			texture_x, texture_y + height,
+		});
+
+		glUseProgram(program->programID);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		glVertexAttribPointer(program->positionAttribute, 2, GL_FLOAT, false, 0, vertexData.data());
+		glEnableVertexAttribArray(program->positionAttribute);
+		glVertexAttribPointer(program->texCoordAttribute, 2, GL_FLOAT, false, 0, texCoordData.data());
+		glEnableVertexAttribArray(program->texCoordAttribute);
+		glBindTexture(GL_TEXTURE_2D, spriteSheet);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		glDisableVertexAttribArray(program->positionAttribute);
+		glDisableVertexAttribArray(program->texCoordAttribute);
+	}
+
+};
+
+//Global Entities
+Entity player;
+std::vector<Entity> vayeate;
+std::vector<Entity> bullets;
+std::vector<Entity> lasers;
+
+//Main Menu Text Settings and Rendering
+void RenderMainMenu() {
+
+	//Display Text
+	modelMatrix.identity();
+	modelMatrix.Translate(-2.8f, 1.0f, 0.0f);
+	program->setModelMatrix(modelMatrix);
+	DrawText(program, fontSheet, "Gundam Defenders", 0.4f, 0.0001f);
+
+	modelMatrix.identity();
+	modelMatrix.Translate(-2.7f, 0.0f, 0.0f);
+	program->setModelMatrix(modelMatrix);
+	DrawText(program, fontSheet, "PRESS SPACE TO START", 0.3f, 0.0001f);
+
+	modelMatrix.identity();
+	modelMatrix.Translate(-2.2f, -1.3f, 0.0f);
+	program->setModelMatrix(modelMatrix);
+	DrawText(program, fontSheet, "USE UP/DOWN/LEFT/RIGHT ", 0.2f, 0.0001f);
+
+	modelMatrix.identity();
+	modelMatrix.Translate(-1.8f, -1.5f, 0.0f);
+	program->setModelMatrix(modelMatrix);
+	DrawText(program, fontSheet, "ARROW KEYS TO MOVE", 0.2f, 0.0001f);
+
+	modelMatrix.identity();
+	modelMatrix.Translate(-1.5f, -2.0f, 0.0f);
+	program->setModelMatrix(modelMatrix);
+	DrawText(program, fontSheet, "SPACE TO FIRE", 0.2f, 0.0001f);
+}
+
+void RenderGameOver() {
+
+	//Display Text
+	modelMatrix.identity();
+	modelMatrix.Translate(-1.8f, 1.0f, 0.0f);
+	program->setModelMatrix(modelMatrix);
+	if (playerWins == true) {
+		DrawText(program, fontSheet, " You Win!", 0.4f, 0.0001f);
+	}
+	else {
+		DrawText(program, fontSheet, "Game Over", 0.4f, 0.0001f);
+	}
+
+	modelMatrix.identity();
+	modelMatrix.Translate(-3.0f, 0.0f, 0.0f);
+	program->setModelMatrix(modelMatrix);
+	DrawText(program, fontSheet, "RESTART TO PLAY AGAIN", 0.3f, 0.0001f);
+	gameRunning = false;
+}
+
+
+void RenderGameLevel() {
+	player.size = 2.5f;
+	player.draw();
+	for (size_t i = 0; i < vayeate.size(); i++) {
+		vayeate[i].size = 2.5f;
+		vayeate[i].draw();
+	}
+	for (size_t i = 0; i < bullets.size(); i++) {
+		bullets[i].draw();
+	}
+	for (size_t i = 0; i < lasers.size(); i++) {
+		lasers[i].draw();
+	}
+}
+
+//background for game
+void gameBackground() {
+	Matrix space;
+	glClear(GL_COLOR_BUFFER_BIT);
+	glUseProgram(program->programID);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	modelMatrix.identity();
+	program->setModelMatrix(space);
+
+	float backgroundV[] = { -4.25f, -2.25f, 4.25f, -2.25f, 4.25f, 2.25f, 4.25f, 2.25f,  -4.25f, 2.25f,  -4.25f, -2.25f, };
+	glVertexAttribPointer(program->positionAttribute, 2, GL_FLOAT, false, 0, backgroundV);
+	glEnableVertexAttribArray(program->positionAttribute);
+	glVertexAttribPointer(program->texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
+	glEnableVertexAttribArray(program->texCoordAttribute);
+
+	glBindTexture(GL_TEXTURE_2D, background);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glDisableVertexAttribArray(program->positionAttribute);
+	glDisableVertexAttribArray(program->texCoordAttribute);
+
+	float ticks = (float)SDL_GetTicks() / 1000.0f;
+	elapsed = ticks - lastFrameTicks;
+	lastFrameTicks = ticks;
+	playerLastShot += elapsed;
+	enemyLastShot += elapsed;
+}
+
+void UpdateGameLevel(float elapsed) {
+
+	//Heavyarms Movement and Shooting
+	if (moveDown) {
+		player.positionY -= player.speedY * elapsed;
+		player.top -= player.speedY * elapsed;
+		player.bottom -= player.speedY * elapsed;
+	}
+	if (moveUp) {
+		player.positionY += player.speedY * elapsed;
+		player.top += player.speedY * elapsed;
+		player.bottom += player.speedY * elapsed;
+	}
+	if (moveLeft) {
+		player.positionX -= player.speedX * elapsed;
+		player.left -= player.speedX * elapsed;
+		player.right -= player.speedX * elapsed;
+	}
+	if (moveRight) {
+		player.positionX += player.speedX * elapsed;
+		player.left += player.speedX * elapsed;
+		player.right += player.speedX * elapsed;
+	}
+	if (shootBullet) {
+		if (playerLastShot > 0.5f) {
+			playerLastShot = 0;
+			bullets.push_back(Entity(player.positionX, player.positionY, 0.0f / 1024.0f, 
+				234.0f / 1024.0f, 16.0f / 1024.0f, 10.0f / 1024.0f, 4.0f, 0));
+		}
+	}
+
+	//Vayeate Movement
+	for (size_t i = 0; i < vayeate.size(); i++) {
+		vayeate[i].positionX -= vayeate[i].speedX * elapsed;
+		vayeate[i].left -= vayeate[i].speedX * elapsed;
+		vayeate[i].right -= vayeate[i].speedX * elapsed;
+
+		vayeate[i].positionY += vayeate[i].speedY * elapsed;
+		vayeate[i].top += vayeate[i].speedY * elapsed;
+		vayeate[i].bottom += vayeate[i].speedY * elapsed;
+
+		if ((vayeate[i].top > 2.0f && vayeate[i].speedY > 0) || (vayeate[i].bottom < -2.0f && vayeate[i].speedY < 0)) {
+			for (size_t i = 0; i < vayeate.size(); i++) {
+				vayeate[i].speedY = -vayeate[i].speedY;
+				}
+			}
+		//if vayeate moves beyond heavyarms, game ends
+		if (vayeate[i].bottom < player.top &&
+			vayeate[i].top > player.bottom &&
+			vayeate[i].left < player.right &&
+			vayeate[i].right > player.left) {
+			gameState = STATE_GAME_OVER;
+			}
+	}
+
+	//Bullets Hitting vayeate
+	std::vector<int> removeBullets;
+	for (size_t i = 0; i < bullets.size(); i++) {
+		bullets[i].positionX += bullets[i].speedX * elapsed;
+		bullets[i].right += bullets[i].speedX * elapsed;
+		bullets[i].left += bullets[i].speedX * elapsed;
+
+		for (size_t j = 0; j < vayeate.size(); j++) {
+			if (vayeate[j].bottom < bullets[i].top &&
+				vayeate[j].top > bullets[i].bottom &&
+				vayeate[j].left < bullets[i].right &&
+				vayeate[j].right > bullets[i].left) {
+				vayeate.erase(vayeate.begin() + j);
+				removeBullets.push_back(i);
+			}
+		}
+	}
+
+	for (int i = 0; i < removeBullets.size(); i++) {
+		bullets.erase(bullets.begin() + removeBullets[i] - i);
+	}
+
+	if (enemyLastShot > 0.5f) {
+		enemyLastShot = 0;
+		int randomLasers = rand() % vayeate.size();
+		lasers.push_back(Entity(vayeate[randomLasers].positionX, vayeate[randomLasers].positionY,
+			0.0f / 1024.0f, 202.0f / 1024.0f, 32.0f / 1024.0f, 30.0f / 1024.0f, -2.0f, 0));
+	}
+
+	std::vector<int> removeLasers;
+	//if laser hits player, game ends
+	for (size_t i = 0; i < lasers.size(); i++) {
+		lasers[i].positionX += lasers[i].speedX * elapsed;
+		lasers[i].left += lasers[i].speedX * elapsed;
+		lasers[i].right += lasers[i].speedX * elapsed;
+		
+		if (lasers[i].bottom < player.top &&
+			lasers[i].top > player.bottom &&
+			lasers[i].left < player.right &&
+			lasers[i].right > player.left) {
+			gameState = STATE_GAME_OVER;
+		}
+	}
+
+	//Out of vayeate, game ends
+	if (vayeate.size() == 0) {
+		playerWins = true;
+		gameState = STATE_GAME_OVER;
+	}
+		
+}
+
+void Render() {
+
+	glClear(GL_COLOR_BUFFER_BIT);
+	gameBackground();
+	switch (gameState) {
+	case STATE_MAIN_MENU:
+		RenderMainMenu();
+		break;
+	case STATE_GAME_LEVEL:
+		RenderGameLevel();
+		break;
+	case STATE_GAME_OVER:
+		RenderGameOver();
+		break;
+	}
+	SDL_GL_SwapWindow(displayWindow);
+}
+
+void Update(float elapsed) {
+	switch (gameState) {
+	case STATE_GAME_LEVEL:
+		UpdateGameLevel(elapsed);
+		break;
+	}
+}
+
+void runGame() {
+
+	//initialize Player
+	player = Entity(-3.65f, 0.0f, 0.0f / 1024.0f, 0.0f / 1024.0f, 93.0f / 1024.0f, 98.0f / 1024.0f, 3.0f, 3.0f);
+	//initalize Vayeates
+	for (int i = 0; i < 25; i++) {
+		vayeate.push_back(Entity(0.7 + (i % 5) * 0.7, 2.0 - (i / 5 * 0.7),
+			0.0f / 1024.0f, 100.0f / 1024.0f, 79.0f / 1024.0f, 100.0f / 1024.0f, 0.03f, 1.0f));
+	}
+
+	Matrix space;
+	SDL_Event event;
+	bool done = false;
+	while (!done) {
+		//game controls
+		while (SDL_PollEvent(&event)) {
+			//closing
+			if (event.type == SDL_QUIT || event.type == SDL_WINDOWEVENT_CLOSE) {
+				done = true;
+			}
+			switch (event.type) {
+			case SDL_KEYDOWN:
+				// Game Start
+				if (event.key.keysym.scancode == SDL_SCANCODE_SPACE) {
+					if (gameState == STATE_MAIN_MENU) {
+						gameState = STATE_GAME_LEVEL;
+					}
+					else {
+						shootBullet = true;
+					}
+				}
+				else if (event.key.keysym.scancode == SDL_SCANCODE_DOWN && player.bottom > -2.25f) {
+					moveDown = true;
+				}
+				else if (event.key.keysym.scancode == SDL_SCANCODE_LEFT && player.left > -4.0f) {
+					moveLeft = true;
+				}
+				else if (event.key.keysym.scancode == SDL_SCANCODE_RIGHT && player.right < 4.0f) {
+					moveRight = true;
+				}
+				else if (event.key.keysym.scancode == SDL_SCANCODE_UP && player.top < 2.25f) {
+					moveUp = true;
+				}
+				break;
+
+			//To stop Player from moving due to global value usage
+			case SDL_KEYUP:
+				if (event.key.keysym.scancode == SDL_SCANCODE_DOWN) {
+					moveDown = false;
+				}
+				if (event.key.keysym.scancode == SDL_SCANCODE_UP) {
+					moveUp = false;
+				}
+				if (event.key.keysym.scancode == SDL_SCANCODE_LEFT) {
+					moveLeft = false;
+				}
+				if (event.key.keysym.scancode == SDL_SCANCODE_RIGHT) {
+					moveRight = false;
+				}
+				if (event.key.keysym.scancode == SDL_SCANCODE_SPACE) {
+					shootBullet = false;
+				}
+				break;
+			}
+		}
+
+		if (gameRunning) {
+			Update(elapsed);
+			Render();
+		}
+	}
+	return;
+}
 int main(int argc, char *argv[])
 {
+	srand(time(NULL));
 	SDL_Init(SDL_INIT_VIDEO);
-	displayWindow = SDL_CreateWindow("Pong, Kevin To", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 360, SDL_WINDOW_OPENGL);
+	displayWindow = SDL_CreateWindow("Gundam Defenders - Kevin To", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_OPENGL);
 	SDL_GLContext context = SDL_GL_CreateContext(displayWindow);
 	SDL_GL_MakeCurrent(displayWindow, context);
 #ifdef _WINDOWS
@@ -111,180 +532,19 @@ int main(int argc, char *argv[])
 #endif
 
 	// setup
-	glViewport(0, 0, 640, 360);
-	ShaderProgram program(RESOURCE_FOLDER"vertex_textured.glsl", RESOURCE_FOLDER"fragment_textured.glsl");
-
-	Matrix projectionMatrix;;
-	Matrix leftPaddleMatrix;
-	Matrix rightPaddleMatrix;
-	Matrix ballMatrix;
-	Matrix viewMatrix;
+	program = new ShaderProgram(RESOURCE_FOLDER"vertex_textured.glsl", RESOURCE_FOLDER"fragment_textured.glsl");
 
 	projectionMatrix.setOrthoProjection(-4.25f, 4.25f, -2.25f, 2.25f, -1.0f, 1.0f);
+	program->setModelMatrix(modelMatrix);
+	program->setProjectionMatrix(projectionMatrix);
+	program->setViewMatrix(viewMatrix);
 
-	//Texture for Paddle and  Ball
-	GLuint green = LoadTexture(RESOURCE_FOLDER"green.png");
-	GLuint blue = LoadTexture(RESOURCE_FOLDER"blue.png");
-	GLuint white = LoadTexture(RESOURCE_FOLDER"white.png");
+	//load sprite sheets and textures
+	fontSheet = LoadTexture(RESOURCE_FOLDER"font1.png");
+	spriteSheet = LoadTexture(RESOURCE_FOLDER"robo1024.png");
+	background = LoadTexture(RESOURCE_FOLDER"space.png");
 
-	//Paddle and Ball Object Initialized
-	Paddle leftPaddle(-4.0f, -3.9f, 0.5f, -0.5f);
-	Paddle rightPaddle(3.9f, 4.0f, 0.5f, -0.5f);
-	Ball ball = Ball();
-
-	float lastFrameTicks = 0.0f;
-
-	SDL_Event event;
-	bool done = false;
-	bool gameStatus = false;
-	while (!done) {
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-		//Drawing Paddles and Ball
-
-		program.setProjectionMatrix(projectionMatrix);
-		program.setViewMatrix(viewMatrix);
-
-		glClear(GL_COLOR_BUFFER_BIT);
-		glUseProgram(program.programID);
-
-		float globalTextureCoords[] = { 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f };
-
-		//left paddle
-		program.setModelMatrix(leftPaddleMatrix);
-		float leftPaddleCoords[] = { -4.0f, -0.5f, -3.9f, -0.5f, -3.9f, 0.5f, -3.9f, 0.5f, -4.0f, 0.5f, -4.0f, -0.5f };
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, leftPaddleCoords);
-		glEnableVertexAttribArray(program.positionAttribute);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-		glBindTexture(GL_TEXTURE_2D, blue);
-
-		glDisableVertexAttribArray(program.positionAttribute);
-		glDisableVertexAttribArray(program.texCoordAttribute);
-
-		// right paddle
-		program.setModelMatrix(rightPaddleMatrix);
-		float rightPaddleCoords[] = { 3.9f, -0.5f, 4.0f, -0.5f, 4.0f, 0.5f, 4.0f, 0.5f, 3.9f, 0.5f, 3.9f, -0.5f };
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, rightPaddleCoords);
-		glEnableVertexAttribArray(program.positionAttribute);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-		glBindTexture(GL_TEXTURE_2D, white);
-
-		glDisableVertexAttribArray(program.positionAttribute);
-		glDisableVertexAttribArray(program.texCoordAttribute);
-
-		// ball
-		program.setModelMatrix(ballMatrix);
-		float ballCoords[] = { -0.1f, -0.1f, 0.1f, -0.1f, 0.1f, 0.1f, 0.1f, 0.1f, -0.1f, 0.1f, -0.1f, -0.1f };
-		glVertexAttribPointer(program.positionAttribute, 2, GL_FLOAT, false, 0, ballCoords);
-		glEnableVertexAttribArray(program.positionAttribute);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		float gatTexCoords[] = { 1.0, 1.0, 2.0, 1.0, 2.0, 0.0, 1.0, 1.0, 2.0, 0.0, 1.0, 0.0 };
-		glVertexAttribPointer(program.texCoordAttribute, 2, GL_FLOAT, false, 0, gatTexCoords);
-		glEnableVertexAttribArray(program.texCoordAttribute);
-		glBindTexture(GL_TEXTURE_2D, green);
-
-		glDisableVertexAttribArray(program.positionAttribute);
-		glDisableVertexAttribArray(program.texCoordAttribute);
-
-		//game controls
-		while (SDL_PollEvent(&event)) {
-
-			//closing
-			if (event.type == SDL_QUIT || event.type == SDL_WINDOWEVENT_CLOSE) {
-				done = true;
-			}
-			if (event.type == SDL_KEYDOWN) {
-
-				// Game Start
-				if (event.key.keysym.scancode == SDL_SCANCODE_SPACE && !gameStatus)
-					gameStatus = true;
-
-				// Left Paddle
-				if (event.key.keysym.scancode == SDL_SCANCODE_W && leftPaddle.top < 2.25f) {
-					leftPaddle.top += 0.5f;
-					leftPaddle.bottom += 0.5f;
-					leftPaddleMatrix.Translate(0.0f, 0.5f, 0.0f);
-				}
-				else if (event.key.keysym.scancode == SDL_SCANCODE_S && leftPaddle.bottom > -2.25f) {
-					leftPaddle.top -= 0.5f;
-					leftPaddle.bottom -= 0.5f;
-					leftPaddleMatrix.Translate(0.0f, -0.5f, 0.0f);
-				}
-
-				// Right Paddle
-				if (event.key.keysym.scancode == SDL_SCANCODE_UP && rightPaddle.top < 2.25f) {
-					rightPaddle.top += 0.5f;
-					rightPaddle.bottom += 0.5f;
-					rightPaddleMatrix.Translate(0.0f, 0.5f, 0.0f);
-				}
-				else if (event.key.keysym.scancode == SDL_SCANCODE_DOWN && rightPaddle.bottom > -2.25f) {
-					rightPaddle.top -= 0.5f;
-					rightPaddle.bottom -= 0.5f;
-					rightPaddleMatrix.Translate(0.0f, -0.5f, 0.0f);
-				}
-			}
-		}
-
-		float ticks = (float)SDL_GetTicks() / 1000.0f;
-		float elapsed = ticks - lastFrameTicks;
-		lastFrameTicks = ticks;
-
-		if (gameStatus)
-		{
-			// Paddle Collision
-			if (ball.positionX <= leftPaddle.right && ball.positionY <= leftPaddle.top && ball.positionY >= leftPaddle.bottom ||
-				ball.positionX >= rightPaddle.left && ball.positionY <= rightPaddle.top && ball.positionY >= rightPaddle.bottom)
-			{
-				ball.directionX *= -1;
-				ball.speed += ball.accel * elapsed;
-				ball.move(elapsed);
-				ballMatrix.Translate((ball.speed * ball.directionX* elapsed), (ball.speed * ball.directionY* elapsed), 0.0f);
-			}
-			// Right side wins, screen turns blue
-			else if (ball.positionX <= leftPaddle.left)
-			{
-				gameStatus = false;
-				ballMatrix.Translate(-ball.positionX, -ball.positionY, 0.0f);
-				ball.reset();
-				glClearColor(0.0, 0.0, 0.5, 0.0);
-			}
-			 
-			// Left side wins, screen turns green
-			else if (ball.positionX >= rightPaddle.right)
-			{
-				gameStatus = false;
-				ballMatrix.Translate(-ball.positionX, -ball.positionY, 0.0f);
-				ball.reset();
-				glClearColor(0.0, 0.5, 0.0, 0.0);\
-			}
-
-			// Wall Collisions
-			else if (ball.positionY >= 2.15f || ball.positionY <= -2.15f)
-			{
-				ball.directionY *= -1;
-				ball.speed += ball.accel* elapsed;
-				ball.move(elapsed);
-				ballMatrix.Translate(ball.speed * ball.positionX* elapsed, ball.speed * ball.positionY* elapsed, 0.0f);
-			}
-
-			// Ball Movement
-			else
-			{
-				ball.move(elapsed);
-				ballMatrix.Translate((ball.speed * ball.directionX* elapsed), (ball.speed * ball.directionY* elapsed), 0.0f);
-			}
-		}
-		SDL_GL_SwapWindow(displayWindow);
-
-	}
+	runGame();
 
 	SDL_Quit();
 	return 0;
