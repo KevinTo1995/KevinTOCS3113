@@ -54,6 +54,8 @@ enum GameState { STATE_MAIN_MENU, STATE_GAME_LEVEL,STATE_GAME_OVER };
 bool gameRunning = true;
 bool playerWins = false;
 enum Type { PLAYER, VAYEATE };
+int gameState;
+ShaderProgram* program;
 
 //Time Values
 float lastFrameTicks = 0.0f;
@@ -67,9 +69,6 @@ bool moveDown = false;
 bool moveLeft = false;
 bool moveRight = false;
 bool shootBullet = false;
-
-int gameState;
-ShaderProgram* program;
 
 GLuint LoadTexture(const char *filePath) {
 	int w, h, comp;
@@ -249,6 +248,7 @@ void RenderMainMenu() {
 	DrawText(program, fontSheet, "SPACE TO FIRE", 0.2f, 0.0001f);
 }
 
+//Game Over Menu Text Settings and Rendering
 void RenderGameOver() {
 
 	//Display Text
@@ -269,7 +269,7 @@ void RenderGameOver() {
 	gameRunning = false;
 }
 
-
+//Game Menu Rendering
 void RenderGameLevel() {
 	player.size = 2.5f;
 	player.draw();
@@ -314,6 +314,7 @@ void gameBackground() {
 	enemyLastShot += elapsed;
 }
 
+//Game Update
 void UpdateGameLevel(float elapsed) {
 
 	//Heavyarms Movement and Shooting
@@ -358,15 +359,20 @@ void UpdateGameLevel(float elapsed) {
 		if ((vayeate[i].top > 2.0f && vayeate[i].speedY > 0) || (vayeate[i].bottom < -2.0f && vayeate[i].speedY < 0)) {
 			for (size_t i = 0; i < vayeate.size(); i++) {
 				vayeate[i].speedY = -vayeate[i].speedY;
-				}
 			}
-		//if vayeate moves beyond heavyarms, game ends
+		}
+		//if vayeate touches heavyarms, game ends
 		if (vayeate[i].bottom < player.top &&
 			vayeate[i].top > player.bottom &&
 			vayeate[i].left < player.right &&
 			vayeate[i].right > player.left) {
 			gameState = STATE_GAME_OVER;
-			}
+		}
+		//if any vayeate reaches the endof left side, game ends
+		if (vayeate[i].left < -4.00) {
+			gameState = STATE_GAME_OVER;
+		}
+
 	}
 
 	//Bullets Hitting vayeate
@@ -387,10 +393,12 @@ void UpdateGameLevel(float elapsed) {
 		}
 	}
 
+	//removing bullets
 	for (int i = 0; i < removeBullets.size(); i++) {
 		bullets.erase(bullets.begin() + removeBullets[i] - i);
 	}
 
+	//creating lasers
 	if (enemyLastShot > 0.5f) {
 		enemyLastShot = 0;
 		int randomLasers = rand() % vayeate.size();
@@ -413,7 +421,7 @@ void UpdateGameLevel(float elapsed) {
 		}
 	}
 
-	//Out of vayeate, game ends
+	//Kill all vayeate, game ends
 	if (vayeate.size() == 0) {
 		playerWins = true;
 		gameState = STATE_GAME_OVER;
@@ -421,6 +429,7 @@ void UpdateGameLevel(float elapsed) {
 		
 }
 
+//render Menus and background
 void Render() {
 
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -439,6 +448,7 @@ void Render() {
 	SDL_GL_SwapWindow(displayWindow);
 }
 
+//updates game level when active
 void Update(float elapsed) {
 	switch (gameState) {
 	case STATE_GAME_LEVEL:
@@ -447,8 +457,8 @@ void Update(float elapsed) {
 	}
 }
 
+//Initializes Entities and control settings
 void runGame() {
-
 	//initialize Player
 	player = Entity(-3.65f, 0.0f, 0.0f / 1024.0f, 0.0f / 1024.0f, 93.0f / 1024.0f, 98.0f / 1024.0f, 3.0f, 3.0f);
 	//initalize Vayeates
@@ -469,7 +479,7 @@ void runGame() {
 			}
 			switch (event.type) {
 			case SDL_KEYDOWN:
-				// Game Start
+				// Starts game level or fires bullets
 				if (event.key.keysym.scancode == SDL_SCANCODE_SPACE) {
 					if (gameState == STATE_MAIN_MENU) {
 						gameState = STATE_GAME_LEVEL;
@@ -478,6 +488,7 @@ void runGame() {
 						shootBullet = true;
 					}
 				}
+				//movements
 				else if (event.key.keysym.scancode == SDL_SCANCODE_DOWN && player.bottom > -2.25f) {
 					moveDown = true;
 				}
