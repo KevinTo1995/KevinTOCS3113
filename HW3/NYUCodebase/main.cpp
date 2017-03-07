@@ -93,7 +93,7 @@ GLuint LoadTexture(const char *filePath) {
 }
 
 //Draw Text Function
-void DrawText(ShaderProgram* program, int fontTexture, std::string text, float size, float spacing) {
+void DrawText(ShaderProgram* program, int fontTexture, std::string text, float size, float space) {
 	float texture_size = 1.0 / 16.0f;
 	std::vector<float> vertexData;
 	std::vector<float> texCoordData;
@@ -106,12 +106,12 @@ void DrawText(ShaderProgram* program, int fontTexture, std::string text, float s
 		float texture_y = (float)(((int)text[i]) / 16) / 16.0f;
 
 		vertexData.insert(vertexData.end(), {
-			((size + spacing) * i) + (-0.5f * size), 0.5f * size,
-			((size + spacing) * i) + (-0.5f * size), -0.5f * size,
-			((size + spacing) * i) + (0.5f * size), 0.5f * size,
-			((size + spacing) * i) + (0.5f * size), -0.5f * size,
-			((size + spacing) * i) + (0.5f * size), 0.5f * size,
-			((size + spacing) * i) + (-0.5f * size), -0.5f * size,
+			((size + space) * i) + (-0.5f * size), 0.5f * size,
+			((size + space) * i) + (-0.5f * size), -0.5f * size,
+			((size + space) * i) + (0.5f * size), 0.5f * size,
+			((size + space) * i) + (0.5f * size), -0.5f * size,
+			((size + space) * i) + (0.5f * size), 0.5f * size,
+			((size + space) * i) + (-0.5f * size), -0.5f * size,
 		});
 		texCoordData.insert(texCoordData.end(), {
 			texture_x, texture_y,
@@ -142,10 +142,7 @@ public:
 	float positionX, positionY;
 	float top, bottom, left, right;
 	float speedX, speedY;
-	float u;
-	float v;
-	float width;
-	float height;
+	float u, v, width, height;
 	float size;
 	Type type;
 	Matrix entityMatrix;
@@ -273,10 +270,8 @@ void RenderGameOver() {
 
 //Game Menu Rendering
 void RenderGameLevel() {
-	player.size = 2.5f;
 	player.draw();
 	for (size_t i = 0; i < vayeate.size(); i++) {
-		vayeate[i].size = 2.5f;
 		vayeate[i].draw();
 	}
 	for (size_t i = 0; i < bullets.size(); i++) {
@@ -285,35 +280,6 @@ void RenderGameLevel() {
 	for (size_t i = 0; i < lasers.size(); i++) {
 		lasers[i].draw();
 	}
-}
-
-//background for game
-void gameBackground() {
-	Matrix space;
-	glClear(GL_COLOR_BUFFER_BIT);
-	glUseProgram(program->programID);
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	modelMatrix.identity();
-	program->setModelMatrix(space);
-
-	float backgroundV[] = { -4.25f, -2.25f, 4.25f, -2.25f, 4.25f, 2.25f, 4.25f, 2.25f,  -4.25f, 2.25f,  -4.25f, -2.25f, };
-	glVertexAttribPointer(program->positionAttribute, 2, GL_FLOAT, false, 0, backgroundV);
-	glEnableVertexAttribArray(program->positionAttribute);
-	glVertexAttribPointer(program->texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
-	glEnableVertexAttribArray(program->texCoordAttribute);
-
-	glBindTexture(GL_TEXTURE_2D, background);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-	glDisableVertexAttribArray(program->positionAttribute);
-	glDisableVertexAttribArray(program->texCoordAttribute);
-
-	float ticks = (float)SDL_GetTicks() / 1000.0f;
-	elapsed = ticks - lastFrameTicks;
-	lastFrameTicks = ticks;
-	playerLastShot += elapsed;
-	enemyLastShot += elapsed;
 }
 
 //Game Update
@@ -340,6 +306,7 @@ void UpdateGameLevel(float elapsed) {
 		player.left += player.speedX * elapsed;
 		player.right += player.speedX * elapsed;
 	}
+	//settign values and making bullets
 	if (shootBullet) {
 		if (playerLastShot > 0.3f) {
 			playerLastShot = 0;
@@ -400,7 +367,7 @@ void UpdateGameLevel(float elapsed) {
 		bullets.erase(bullets.begin() + removeBullets[i] - i);
 	}
 
-	//creating lasers
+	//setting values for lasers
 	if (enemyLastShot > 0.5f) {
 		enemyLastShot = 0;
 		int randomLasers = rand() % vayeate.size();
@@ -408,7 +375,6 @@ void UpdateGameLevel(float elapsed) {
 			0.0f / 1024.0f, 202.0f / 1024.0f, 32.0f / 1024.0f, 30.0f / 1024.0f, -2.0f, 0, 1.0f));
 	}
 
-	std::vector<int> removeLasers;
 	//if laser hits player, game ends
 	for (size_t i = 0; i < lasers.size(); i++) {
 		lasers[i].positionX += lasers[i].speedX * elapsed;
@@ -423,12 +389,40 @@ void UpdateGameLevel(float elapsed) {
 		}
 	}
 
-	//Kill all vayeate, game ends
+	//Kill all vayeate, Win Game
 	if (vayeate.size() == 0) {
 		playerWins = true;
 		gameState = STATE_GAME_OVER;
 	}
 		
+}
+//background for game
+void gameBackground() {
+	Matrix space;
+	glClear(GL_COLOR_BUFFER_BIT);
+	glUseProgram(program->programID);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	modelMatrix.identity();
+	program->setModelMatrix(space);
+
+	float backgroundV[] = { -4.25f, -2.25f, 4.25f, -2.25f, 4.25f, 2.25f, 4.25f, 2.25f,  -4.25f, 2.25f,  -4.25f, -2.25f, };
+	glVertexAttribPointer(program->positionAttribute, 2, GL_FLOAT, false, 0, backgroundV);
+	glEnableVertexAttribArray(program->positionAttribute);
+	glVertexAttribPointer(program->texCoordAttribute, 2, GL_FLOAT, false, 0, globalTextureCoords);
+	glEnableVertexAttribArray(program->texCoordAttribute);
+
+	glBindTexture(GL_TEXTURE_2D, background);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glDisableVertexAttribArray(program->positionAttribute);
+	glDisableVertexAttribArray(program->texCoordAttribute);
+
+	float ticks = (float)SDL_GetTicks() / 1000.0f;
+	elapsed = ticks - lastFrameTicks;
+	lastFrameTicks = ticks;
+	playerLastShot += elapsed;
+	enemyLastShot += elapsed;
 }
 
 //render Menus and background
@@ -459,7 +453,7 @@ void Update(float elapsed) {
 	}
 }
 
-//Initializes Entities and control settings
+//Initializes Entities, controls, and starts game
 void runGame() {
 	//initialize Player
 	player = Entity(-3.65f, 0.0f, 0.0f / 1024.0f, 0.0f / 1024.0f, 93.0f / 1024.0f, 98.0f / 1024.0f, 3.0f, 3.0f, 2.5f);
