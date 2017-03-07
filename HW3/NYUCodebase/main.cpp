@@ -146,17 +146,18 @@ public:
 	float v;
 	float width;
 	float height;
-	float size = 1.0f;
+	float size;
 	Type type;
 	Matrix entityMatrix;
 
 	Entity() {}
 
-	Entity(float x, float y, float spriteU, float spriteV, float spriteWidth, float spriteHeight, float dx, float dy) {
+	Entity(float x, float y, float spriteU, float spriteV, float spriteWidth, float spriteHeight, float dx, float dy, float sz) {
 		positionX = x;
 		positionY = y;
 		speedX = dx;
 		speedY = dy;
+		size = sz;
 		top = y + 0.1f * size;
 		bottom = y - 0.1f * size;
 		right = x + 0.05f * size;
@@ -169,6 +170,7 @@ public:
 		entityMatrix.Translate(x, y, 0);
 	}
 
+	//Draw Object Funtion
 	void draw() {
 		entityMatrix.identity();
 		entityMatrix.Translate(positionX, positionY, 0);
@@ -339,10 +341,10 @@ void UpdateGameLevel(float elapsed) {
 		player.right += player.speedX * elapsed;
 	}
 	if (shootBullet) {
-		if (playerLastShot > 0.5f) {
+		if (playerLastShot > 0.3f) {
 			playerLastShot = 0;
 			bullets.push_back(Entity(player.positionX, player.positionY, 0.0f / 1024.0f, 
-				234.0f / 1024.0f, 16.0f / 1024.0f, 10.0f / 1024.0f, 4.0f, 0));
+				234.0f / 1024.0f, 16.0f / 1024.0f, 10.0f / 1024.0f, 4.0f, 0, 0.5f));
 		}
 	}
 
@@ -403,7 +405,7 @@ void UpdateGameLevel(float elapsed) {
 		enemyLastShot = 0;
 		int randomLasers = rand() % vayeate.size();
 		lasers.push_back(Entity(vayeate[randomLasers].positionX, vayeate[randomLasers].positionY,
-			0.0f / 1024.0f, 202.0f / 1024.0f, 32.0f / 1024.0f, 30.0f / 1024.0f, -2.0f, 0));
+			0.0f / 1024.0f, 202.0f / 1024.0f, 32.0f / 1024.0f, 30.0f / 1024.0f, -2.0f, 0, 1.0f));
 	}
 
 	std::vector<int> removeLasers;
@@ -460,11 +462,11 @@ void Update(float elapsed) {
 //Initializes Entities and control settings
 void runGame() {
 	//initialize Player
-	player = Entity(-3.65f, 0.0f, 0.0f / 1024.0f, 0.0f / 1024.0f, 93.0f / 1024.0f, 98.0f / 1024.0f, 3.0f, 3.0f);
+	player = Entity(-3.65f, 0.0f, 0.0f / 1024.0f, 0.0f / 1024.0f, 93.0f / 1024.0f, 98.0f / 1024.0f, 3.0f, 3.0f, 2.5f);
 	//initalize Vayeates
 	for (int i = 0; i < 25; i++) {
 		vayeate.push_back(Entity(0.7 + (i % 5) * 0.7, 2.0 - (i / 5 * 0.7),
-			0.0f / 1024.0f, 100.0f / 1024.0f, 79.0f / 1024.0f, 100.0f / 1024.0f, 0.03f, 1.0f));
+			0.0f / 1024.0f, 100.0f / 1024.0f, 79.0f / 1024.0f, 100.0f / 1024.0f, 0.03f, 1.0f,2.5f));
 	}
 
 	Matrix space;

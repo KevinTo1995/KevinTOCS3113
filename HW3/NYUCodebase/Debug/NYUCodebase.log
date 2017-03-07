@@ -1,7 +1,7 @@
 ﻿  main.cpp
 c:\users\kevin to\documents\github\kevintocs3113\hw3\nyucodebase\main.cpp(101): warning C4018: '<': signed/unsigned mismatch
-c:\users\kevin to\documents\github\kevintocs3113\hw3\nyucodebase\main.cpp(397): warning C4018: '<': signed/unsigned mismatch
-c:\users\kevin to\documents\github\kevintocs3113\hw3\nyucodebase\main.cpp(467): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-c:\users\kevin to\documents\github\kevintocs3113\hw3\nyucodebase\main.cpp(536): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+c:\users\kevin to\documents\github\kevintocs3113\hw3\nyucodebase\main.cpp(399): warning C4018: '<': signed/unsigned mismatch
+c:\users\kevin to\documents\github\kevintocs3113\hw3\nyucodebase\main.cpp(469): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\kevin to\documents\github\kevintocs3113\hw3\nyucodebase\main.cpp(538): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
   NYUCodebase.vcxproj -> C:\Users\Kevin To\Documents\GitHub\KevinTOCS3113\HW3\Debug\NYUCodebase.exe
   NYUCodebase.vcxproj -> C:\Users\Kevin To\Documents\GitHub\KevinTOCS3113\HW3\Debug\NYUCodebase.pdb (Full PDB)
