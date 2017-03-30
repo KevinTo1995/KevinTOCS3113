@@ -1,0 +1,1 @@
+sprites_01.png.png 0 98, sprites_02.png.png 0 0, sprites_03.png.png 0 201, sprites_04.png.png 0 255.
