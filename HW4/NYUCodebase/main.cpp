@@ -63,7 +63,6 @@ bool gameRunning = true;
 bool playerWins = false;
 enum Type { PLAYER, VAYEATE };
 int gameState;
-bool gameLevel = false;
 ShaderProgram* program;
 
 //Time Values
@@ -518,7 +517,7 @@ void gameBackground() {
 	modelMatrix.identity();
 	program->setModelMatrix(space);
 
-	if (gameLevel == true){
+	if (gameState == STATE_GAME_LEVEL || gameState == STATE_GAME_OVER){
 		float backgroundV[] = { -4.25f + player.positionX, -2.25f + player.positionY, 4.25f + player.positionX , -2.25f + player.positionY, 4.25f + player.positionX, 2.25f + player.positionY,
 			4.25f + player.positionX, 2.25f + player.positionY,  -4.25f + player.positionX, 2.25f + player.positionY,  -4.25f + player.positionX, -2.25f + player.positionY, };
 		glVertexAttribPointer(program->positionAttribute, 2, GL_FLOAT, false, 0, backgroundV);
@@ -561,15 +560,12 @@ void Render() {
 	gameBackground();
 	switch (gameState) {
 	case STATE_MAIN_MENU:
-		gameLevel = false;
 		RenderMainMenu();
 		break;
 	case STATE_GAME_LEVEL:
-		gameLevel = true;
 		RenderGameLevel();
 		break;
 	case STATE_GAME_OVER:
-		gameLevel = false;
 		RenderGameOver();
 		break;
 	}
