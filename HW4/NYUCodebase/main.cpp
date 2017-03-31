@@ -1,11 +1,19 @@
 /*
 Kevin To CS3113 Homework 4
-Gundam Defenders "Space Invaders"
+Gundam Defenders Platform "Space Invaders"
 • Make Space Invaders
 • It must have 2 states: TITLE SCREEN, GAME
 • It must display text
 • It must use sprite sheets
 • You can use any graphics you want (it doesn’thave to be in space! :)
+
+- Make a simple scrolling platformer game demo.
+- It must use a tilemap or static/dynamic entities.
+- Must have a controllable player character that
+interacts with at least one other dynamic entity
+(enemy or item)
+- It must scroll to follow your player with the
+camera.
 
 Has three states: Main Menu State, Game State and Game Over State.
 Player Instructions:
@@ -61,8 +69,6 @@ ShaderProgram* program;
 //Time Values
 float lastFrameTicks = 0.0f;
 float elapsed;
-#define FIXED_TIMESTEP 0.0166666f
-#define MAX_TIMESTEPS 6
 float playerLastShot = 0.0f;
 float playerLastJump = 0.0f;
 float enemyLastShot = 0.0f;
@@ -149,7 +155,6 @@ public:
 	float accelerationX, accelerationY;
 	float u, v, width, height;
 	float sizeX, sizeY;
-	bool Static = true;
 	Type type;
 	Matrix entityMatrix;
 
@@ -218,20 +223,17 @@ public:
 		glDisableVertexAttribArray(program->texCoordAttribute);
 	}
 	void updateY(float elapsed) {
-		if (!Static) {
 			speedY += accelerationY;
 			positionY += speedY * elapsed;
 			top += speedY * elapsed;
 			bottom += speedY * elapsed;
-		}
+		
 	}
 	void updateX(float elapsed) {
-		if (!Static) {
 			speedX += accelerationX;
 			positionX += speedX * elapsed;
 			left += speedX * elapsed;
 			right += speedX * elapsed;
-		}
 	}
 
 };
@@ -252,8 +254,14 @@ void RenderMainMenu() {
 	program->setModelMatrix(modelMatrix);
 	DrawText(program, fontSheet, "Gundam Defenders", 0.4f, 0.0001f);
 
+
 	modelMatrix.identity();
-	modelMatrix.Translate(-2.7f, 0.0f, 0.0f);
+	modelMatrix.Translate(-1.8f, 0.5f, 0.0f);
+	program->setModelMatrix(modelMatrix);
+	DrawText(program, fontSheet, "Platformer", 0.4f, 0.0001f);
+
+	modelMatrix.identity();
+	modelMatrix.Translate(-2.7f, -0.50f, 0.0f);
 	program->setModelMatrix(modelMatrix);
 	DrawText(program, fontSheet, "PRESS SPACE TO START", 0.3f, 0.0001f);
 
@@ -277,8 +285,9 @@ void RenderMainMenu() {
 //Game Over Menu Text Settings and Rendering
 void RenderGameOver() {
 	//Display Text
+
 	modelMatrix.identity();
-	modelMatrix.Translate(-1.8f, 1.0f, 0.0f);
+	modelMatrix.Translate(-1.8f + player.positionX, 1.0f + player.positionY, 0.0f);
 	program->setModelMatrix(modelMatrix);
 	if (playerWins == true) {
 		DrawText(program, fontSheet, " You Win!", 0.4f, 0.0001f);
@@ -288,15 +297,10 @@ void RenderGameOver() {
 	}
 
 	modelMatrix.identity();
-	modelMatrix.Translate(-3.0f, 0.0f, 0.0f);
+	modelMatrix.Translate(-3.0f + player.positionX, 0.0f + player.positionY, 0.0f);
 	program->setModelMatrix(modelMatrix);
 	DrawText(program, fontSheet, "RESTART TO PLAY AGAIN", 0.3f, 0.0001f);
 	gameRunning = false;
-	
-	viewMatrix.identity();
-	viewMatrix.Translate(player.positionX, player.positionY, 0.0f);
-	program->setViewMatrix(viewMatrix);
-
 }
 
 //Game Menu Rendering
@@ -327,14 +331,14 @@ void UpdateGameLevel(float elapsed) {
 		/*player.positionY -= player.speedY * elapsed;
 		player.top -= player.speedY * elapsed;
 		player.bottom -= player.speedY * elapsed;*/
+		player.speedY = -1.5f;
 	}
 	if (moveUp && (playerLastJump > 1.85f)) {
-		
 		/*player.positionY += player.speedY * elapsed;
 		player.top += player.speedY * elapsed;
 		player.bottom += player.speedY * elapsed;*/
 		playerLastJump = 0.0f;
-		player.speedY = 2.0f;
+		player.speedY = 3.0f;
 	}
 	if (moveLeft) {
 		/*player.positionX -= player.speedX * elapsed;
@@ -349,147 +353,107 @@ void UpdateGameLevel(float elapsed) {
 		player.speedX = 2.0f;
 
 	}
-
-	//Y axis collision
-	float penetration;
-
+	//Player Movement
 	player.updateY(elapsed);
-	for (size_t i = 0; i < vayeate.size(); i++) {
-		vayeate[i].updateY(elapsed);
-	}
-
+	player.updateX(elapsed);
 	for (size_t i = 0; i < ground.size(); i++) {
 		if (player.bottom < ground[i].top &&
 			player.top > ground[i].bottom &&
 			player.left < ground[i].right &&
 			player.right > ground[i].left)
 		{
-			float y_distance = fabs(player.positionY - ground[i].positionY);
+			float distance = fabs(player.positionY - ground[i].positionY);
 			float firstEnitityHeightHalf = 0.05f * player.sizeY * 2;
 			float secondEntityHeightHalf = 0.05f * ground[i].sizeY * 2;
-			penetration = fabs(y_distance - firstEnitityHeightHalf - secondEntityHeightHalf);
+			float penetration = fabs(distance - firstEnitityHeightHalf - secondEntityHeightHalf);
 
 			if (player.positionY > ground[i].positionY) {
 				player.positionY += penetration + 0.001f;
 				player.top += penetration + 0.001f;
 				player.bottom += penetration + 0.001f;
-				//player.collided[1] = true;
 			}
 			else {
 				player.positionY -= (penetration + 0.001f);
 				player.top -= (penetration + 0.001f);
 				player.bottom -= (penetration + 0.001f);
-				//player.collided[0] = true;
 			}
 			player.speedY = 0.0f;
 			break;
 		}
 	}
-	
-	for (size_t j = 0; j < vayeate.size(); j++)
-		for (size_t i = 0; i < ground.size(); i++) {
-			if (vayeate[j].bottom < ground[i].top &&
-				vayeate[j].top > ground[i].bottom &&
-				vayeate[j].left < ground[i].right &&
-				vayeate[j].right > ground[i].left)
-			{
-				float y_distance = fabs(vayeate[j].positionY - ground[i].positionY);
-				float firstEnitityHeightHalf = 0.05f * vayeate[j].sizeY * 2;
-				float secondEntityHeightHalf = 0.05f * ground[i].sizeY * 2;
-				penetration = fabs(y_distance - firstEnitityHeightHalf - secondEntityHeightHalf);
-
-			
-				if (vayeate[j].positionY > ground[i].positionY) {
-					vayeate[j].positionY += penetration + 0.001f;
-					vayeate[j].top += penetration + 0.001f;
-					vayeate[j].bottom += penetration + 0.001f;
-					//player.collided[1] = true;
-					vayeate[j].speedY = 1.0f;
-				}
-				else {
-					vayeate[j].positionY -= (penetration + 0.001f);
-					vayeate[j].top -= (penetration + 0.001f);
-					vayeate[j].bottom -= (penetration + 0.001f);
-					//player.collided[0] = true;
-					vayeate[j].speedY = 0.0f;
-				}
-				break;
-			}
-			//game over
-			if (vayeate[j].bottom < player.top &&
-				vayeate[j].top > player.bottom &&
-				vayeate[j].left < player.right &&
-				vayeate[j].right > player.left) {
-				gameState = STATE_GAME_OVER;
-			}
-		}
-	//X axis movement
-	player.updateX(elapsed);
-
 	for (size_t i = 0; i < ground.size(); i++) {
 		if (player.bottom < ground[i].top &&
 			player.top > ground[i].bottom &&
 			player.left < ground[i].right &&
 			player.right > ground[i].left)
 		{
-			float x_distance = fabs(player.positionX - ground[i].positionX);
+			float distance = fabs(player.positionX - ground[i].positionX);
 			float firstEnitityHeightHalf = 0.05f * player.sizeX * 2;
 			float secondEntityHeightHalf = 0.05f * ground[i].sizeX * 2;
-			penetration = fabs(x_distance - firstEnitityHeightHalf - secondEntityHeightHalf);
+			float penetration = fabs(distance - firstEnitityHeightHalf - secondEntityHeightHalf);
 
 			if (player.positionX > ground[i].positionX) {
 				player.positionX += penetration + 0.001f;
 				player.left += penetration + 0.001f;
 				player.right += penetration + 0.001f;
-				//player.collided[1] = true;
 			}
 			else {
 				player.positionX -= (penetration + 0.001f);
 				player.left -= (penetration + 0.001f);
 				player.right -= (penetration + 0.001f);
-				//player.collided[0] = true;
 			}
 			player.speedX = 0.0f;
 			break;
 		}
 	}
-	//settign values and making bullets
+
+	//Vayeate Movement
+	for (size_t i = 0; i < vayeate.size(); i++) {
+		vayeate[i].updateY(elapsed);
+		for (size_t j = 0; j < ground.size(); j++) {
+			if (vayeate[i].bottom < ground[j].top &&
+				vayeate[i].top > ground[j].bottom &&
+				vayeate[i].left < ground[j].right &&
+				vayeate[i].right > ground[j].left)
+			{
+				float distance = fabs(vayeate[i].positionY - ground[j].positionY);
+				float firstEnitityHeightHalf = 0.05f * vayeate[i].sizeY * 2;
+				float secondEntityHeightHalf = 0.05f * ground[j].sizeY * 2;
+				float penetration = fabs(distance - firstEnitityHeightHalf - secondEntityHeightHalf);
+
+				if (vayeate[i].positionY > ground[j].positionY) {
+					vayeate[i].positionY += penetration + 0.001f;
+					vayeate[i].top += penetration + 0.001f;
+					vayeate[i].bottom += penetration + 0.001f;
+					vayeate[i].speedY = 1.0f;
+				}
+				else {
+					vayeate[i].positionY -= (penetration + 0.001f);
+					vayeate[i].top -= (penetration + 0.001f);
+					vayeate[i].bottom -= (penetration + 0.001f);
+					vayeate[i].speedY = 0.0f;
+				}
+				break;
+			}
+			//game over
+			if (vayeate[i].bottom < player.top &&
+				vayeate[i].top > player.bottom &&
+				vayeate[i].left < player.right &&
+				vayeate[i].right > player.left) {
+				gameState = STATE_GAME_OVER;
+			}
+		}
+	}
+	
+	
+	//setting values and making bullets
 	if (shootBullet) {
 		if (playerLastShot > 0.3f) {
 			playerLastShot = 0;
 			bullets.push_back(Entity(player.positionX, player.positionY, 0.0f / 1024.0f, 
-				234.0f / 1024.0f, 16.0f / 1024.0f, 10.0f / 1024.0f, 4.0f, 0, 0.5f, 0.5f, 0.0f, 0.0f));
+				234.0f / 1024.0f, 16.0f / 1024.0f, 10.0f / 1024.0f, 4.0f, 0, 1.0f, 0.5f, 0.0f, 0.0f));
 		}
 	}
-
-	//Vayeate Movement
-	/*for (size_t i = 0; i < vayeate.size(); i++) {
-		vayeate[i].positionX -= vayeate[i].speedX * elapsed;
-		vayeate[i].left -= vayeate[i].speedX * elapsed;
-		vayeate[i].right -= vayeate[i].speedX * elapsed;
-
-		vayeate[i].positionY += vayeate[i].speedY * elapsed;
-		vayeate[i].top += vayeate[i].speedY * elapsed;
-		vayeate[i].bottom += vayeate[i].speedY * elapsed;
-
-		if ((vayeate[i].top > 2.0f && vayeate[i].speedY > 0) || (vayeate[i].bottom < -2.0f && vayeate[i].speedY < 0)) {
-			for (size_t i = 0; i < vayeate.size(); i++) {
-				vayeate[i].speedY = -vayeate[i].speedY;
-			}
-		}
-		//if vayeate touches heavyarms, game ends
-		if (vayeate[i].bottom < player.top &&
-			vayeate[i].top > player.bottom &&
-			vayeate[i].left < player.right &&
-			vayeate[i].right > player.left) {
-			gameState = STATE_GAME_OVER;
-		}
-		//if any vayeate reaches the endof left side, game ends
-		if (vayeate[i].left < -4.00) {
-			gameState = STATE_GAME_OVER;
-		}
-
-	}*/
 
 	//Bullets Hitting vayeate
 	std::vector<int> removeBullets;
@@ -515,7 +479,7 @@ void UpdateGameLevel(float elapsed) {
 	}
 
 	//setting values for lasers
-	if (enemyLastShot > 3.0f) {
+	if (enemyLastShot > 2.0f) {
 		enemyLastShot = 0;
 		int randomLasers = rand() % vayeate.size();
 		lasers.push_back(Entity(vayeate[randomLasers].positionX, vayeate[randomLasers].positionY,
@@ -624,18 +588,38 @@ void Update(float elapsed) {
 //Initializes Entities, controls, and starts game
 void runGame() {
 	//initialize Player
-	player = Entity(-3.65f, -1.75f, 0.0f / 1024.0f, 0.0f / 1024.0f, 93.0f / 1024.0f, 98.0f / 1024.0f, 0.0f, 0.0f, 1.5f, 2.0f, 0.0f, -0.005f);
-	player.Static = false;
+	player = Entity(-3.65f, -2.0f, 0.0f / 1024.0f, 0.0f / 1024.0f, 93.0f / 1024.0f, 98.0f / 1024.0f, 0.0f, 0.0f, 1.5f, 2.0f, 0.0f, -0.01f);
 	//initalize Vayeates
 	for (int i = 0; i < 5; i++) {
-		vayeate.push_back(Entity(0.7 + (i % 5) * 0.7, 2.0 - (i / 5 * 0.7),
-			0.0f / 1024.0f, 100.0f / 1024.0f, 79.0f / 1024.0f, 100.0f / 1024.0f, 0.0f, 0.5f,1.5f, 2.0f, 0.0, -0.005f));
-		vayeate[i].Static = false;
+		vayeate.push_back(Entity(-1.0f + (i * 1.0f) , -1.0f + (i * 1.0f),
+			0.0f / 1024.0f, 100.0f / 1024.0f, 79.0f / 1024.0f, 100.0f / 1024.0f, 0.0f, 0.25f, 1.5f, 2.0f, 0.0, -0.005f));
 	}
-	//initalize Ground
-	for (int i = 0; i < 55; i++) {
+	//initalize Platforms
+	for (int i = 0; i < 43; i++) {
 		ground.push_back(Entity(-4.0f + (i) * 0.2f, -2.25f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+		ground.push_back(Entity(-4.0f + (i) * 0.2f, 4.5f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+
 	}
+	for (int i = 0; i < 34; i++) {
+		ground.push_back(Entity(-4.0f, -2.25 + (i) * 0.2f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+		ground.push_back(Entity(4.5f, -2.25 + (i) * 0.2f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+	}
+	for (int i = 0; i < 5; i++) {
+		ground.push_back(Entity(-1.5f +(i *.2f), -1.00f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+		ground.push_back(Entity(-0.5f + (i *.2f), 0.0f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+		ground.push_back(Entity( 0.5f + (i *.2f), 1.0f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+		ground.push_back(Entity( 1.5f + (i *.2f), 2.0f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+		ground.push_back(Entity( 2.5f + (i *.2f), 3.0f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+
+		ground.push_back(Entity(-1.5f, -2.0f + (i *.2f), 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+		ground.push_back(Entity(-0.5f, -1.0f + (i *.2f), 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+		ground.push_back(Entity(0.5f, 0.0f + (i *.2f), 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+		ground.push_back(Entity(1.5f, 1.0f + (i *.2f), 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+		ground.push_back(Entity(2.5f , 2.0f + (i *.2f), 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+		ground.push_back(Entity(3.5f, 3.0f + (i *.2f), 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f));
+	}
+
+	
 
 
 	Matrix space;
@@ -645,7 +629,7 @@ void runGame() {
 		//game controls
 		while (SDL_PollEvent(&event)) {
 			//closing
-			if (event.type == SDL_QUIT || event.type == SDL_WINDOWEVENT_CLOSE) {
+			if (event.type == SDL_QUIT || event.type == SDL_WINDOWEVENT_CLOSE || event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
 				done = true;
 			}
 			switch (event.type) {
@@ -660,16 +644,16 @@ void runGame() {
 					}
 				}
 				//movements
-				else if (event.key.keysym.scancode == SDL_SCANCODE_DOWN && player.bottom > -2.25f) {
+				else if (event.key.keysym.scancode == SDL_SCANCODE_DOWN ) {
 					moveDown = true;
 				}
-				else if (event.key.keysym.scancode == SDL_SCANCODE_LEFT && player.left > -4.0f) {
+				else if (event.key.keysym.scancode == SDL_SCANCODE_LEFT) {
 					moveLeft = true;
 				}
-				else if (event.key.keysym.scancode == SDL_SCANCODE_RIGHT && player.right < 4.0f) {
+				else if (event.key.keysym.scancode == SDL_SCANCODE_RIGHT) {
 					moveRight = true;
 				}
-				else if (event.key.keysym.scancode == SDL_SCANCODE_UP && player.top < 2.25f ) {
+				else if (event.key.keysym.scancode == SDL_SCANCODE_UP ) {
 					moveUp = true;
 				}
 				break;
@@ -701,7 +685,6 @@ void runGame() {
 			Update(elapsed);
 			Render();
 		}
-	
 	}
 	return;
 }
@@ -709,7 +692,7 @@ int main(int argc, char *argv[])
 {
 	srand(time(NULL));
 	SDL_Init(SDL_INIT_VIDEO);
-	displayWindow = SDL_CreateWindow("Gundam Defenders - Kevin To", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_OPENGL);
+	displayWindow = SDL_CreateWindow("Gundam Defenders Platformer - Kevin To", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_OPENGL);
 	SDL_GLContext context = SDL_GL_CreateContext(displayWindow);
 	SDL_GL_MakeCurrent(displayWindow, context);
 #ifdef _WINDOWS
