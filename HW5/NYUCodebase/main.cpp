@@ -272,14 +272,14 @@ bool checkSATCollision(const std::vector<Vector> &e1Points, const std::vector<Ve
 	return true;
 }
 
-Vector rotate_position(float cx, float cy, float angle, Vector position)
+Vector rotate_position(float posX, float posY, float angle, Vector position)
 {
-	position.x -= cx;
-	position.y -= cy;
+	position.x -= posX;
+	position.y -= posY;
 	float x = position.x * cos(angle) - position.y * sin(angle);
 	float y = position.x * sin(angle) + position.y * cos(angle);
-	position.x = x + cx;
-	position.y = y + cy;
+	position.x = x + posX;
+	position.y = y + posY;
 	return position;
 }
 
@@ -332,7 +332,10 @@ public:
 	void draw() {
 		entityMatrix.identity();
 		entityMatrix.Translate(positionX, positionY, 0);
-		entityMatrix.Rotate(angle);
+		if (angle == 0.0f) {
+			entityMatrix.Rotate(angle);
+		}
+		else{ entityMatrix.Rotate(angle += (3.141592653f / 1024)); }
 		program->setModelMatrix(entityMatrix);
 
 		std::vector<float> vertexData;
@@ -397,6 +400,15 @@ public:
 		for (size_t i = 0; i < edges.size(); i++) {
 			edges[i].x += speedX * elapsed;
 			edges[i].y += speedY * elapsed;
+		}
+		if (angle == 0.0f) {
+			//do nothing
+		}
+		else {
+			edges[0] = rotate_position(positionX, positionY, angle += (3.141592653f / 1024), Vector(left, top));
+			edges[1] = rotate_position(positionX, positionY, angle += (3.141592653f / 1024), Vector(right, top));
+			edges[2] = rotate_position(positionX, positionY, angle += (3.141592653f / 1024), Vector(left, bottom));
+			edges[3] = rotate_position(positionX, positionY, angle += (3.141592653f / 1024), Vector(right, bottom));
 		}
 	}
 };
