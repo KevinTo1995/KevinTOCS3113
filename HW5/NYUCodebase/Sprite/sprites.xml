@@ -1,0 +1,4 @@
+<TextureAtlas imagePath="sprites.png">
+	<SubTexture name="robo1024.png" x="0" y="0" width="128" height="256"/>
+	<SubTexture name="tiles_spritesheet_18.png" x="0" y="258" width="70" height="70"/>
+</TextureAtlas>

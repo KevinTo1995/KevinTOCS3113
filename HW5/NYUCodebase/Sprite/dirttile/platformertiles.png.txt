@@ -1,0 +1,1 @@
+platformertiles_01.png.png 0 0, platformertiles_02.png.png 201 91, platformertiles_03.png.png 231 64, platformertiles_04.png.png 186 91.

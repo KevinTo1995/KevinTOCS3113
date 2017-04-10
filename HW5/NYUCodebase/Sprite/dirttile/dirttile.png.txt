@@ -1,0 +1,1 @@
+dirttile_01.png.png 65 99, dirttile_02.png.png 0 0, dirttile_03.png.png 258 154, dirttile_04.png.png 263 137, dirttile_05.png.png 282 155, dirttile_06.png.png 289 142, dirttile_07.png.png 272 4, dirttile_08.png.png 361 112, dirttile_09.png.png 65 116, dirttile_10.png.png 304 113, dirttile_11.png.png 97 132.
