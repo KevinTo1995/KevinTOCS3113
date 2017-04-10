@@ -1,27 +1,12 @@
 /*
-Kevin To CS3113 Homework 4
-Gundam Defenders Platform "Space Invaders"
-• Make Space Invaders
-• It must have 2 states: TITLE SCREEN, GAME
-• It must display text
-• It must use sprite sheets
-• You can use any graphics you want (it doesn’thave to be in space! :)
+Kevin To CS3113 Homework 5
+Gundam Defenders Collision 
 
-- Make a simple scrolling platformer game demo.
-- It must use a tilemap or static/dynamic entities.
-- Must have a controllable player character that
-interacts with at least one other dynamic entity
-(enemy or item)
-- It must scroll to follow your player with the
-camera.
-
-Has three states: Main Menu State, Game State and Game Over State.
-Player Instructions:
-Press Space to Start game.
-Use Arrow Keys to move UP,DOWN,LEFT, and Right.
-Press Space to shoot.
-Eliminate all Vayeates to win.
-
+Create a simple Separated Axis Collision demo using colliding
+rectangles or polygons.
+(You will be provided with the SAT collision function).
+It must have at least 3 objects colliding with each other and
+responding to collisions. They must be rotated and scaled!
 */
 
 #ifdef _WINDOWS
@@ -70,9 +55,6 @@ ShaderProgram* program;
 //Time Values
 float lastFrameTicks = 0.0f;
 float elapsed;
-float playerLastShot = 0.0f;
-float playerLastJump = 0.0f;
-float enemyLastShot = 0.0f;
 
 //Control Bools
 bool moveUp = false;
@@ -290,20 +272,15 @@ bool checkSATCollision(const std::vector<Vector> &e1Points, const std::vector<Ve
 	return true;
 }
 
-Vector rotate_position(float cx, float cy, float angle, Vector p)
+Vector rotate_position(float cx, float cy, float angle, Vector position)
 {
-	// translate point back to origin:
-	p.x -= cx;
-	p.y -= cy;
-
-	// rotate point
-	float xnew = p.x * cos(angle) - p.y * sin(angle);
-	float ynew = p.x * sin(angle) + p.y * cos(angle);
-
-	// translate point back:
-	p.x = xnew + cx;
-	p.y = ynew + cy;
-	return p;
+	position.x -= cx;
+	position.y -= cy;
+	float x = position.x * cos(angle) - position.y * sin(angle);
+	float y = position.x * sin(angle) + position.y * cos(angle);
+	position.x = x + cx;
+	position.y = y + cy;
+	return position;
 }
 
 
@@ -442,7 +419,7 @@ void RenderMainMenu() {
 	modelMatrix.identity();
 	modelMatrix.Translate(-1.8f, 0.5f, 0.0f);
 	program->setModelMatrix(modelMatrix);
-	DrawText(program, fontSheet, "Platformer", 0.4f, 0.0001f);
+	DrawText(program, fontSheet, "Collision", 0.4f, 0.0001f);
 
 	modelMatrix.identity();
 	modelMatrix.Translate(-2.7f, -0.50f, 0.0f);
@@ -462,7 +439,7 @@ void RenderMainMenu() {
 	modelMatrix.identity();
 	modelMatrix.Translate(-1.5f, -2.0f, 0.0f);
 	program->setModelMatrix(modelMatrix);
-	DrawText(program, fontSheet, "SPACE TO FIRE", 0.2f, 0.0001f);
+	DrawText(program, fontSheet, "SPACE TO STOP", 0.2f, 0.0001f);
 
 }
 
@@ -522,11 +499,11 @@ void UpdateGameLevel(float elapsed) {
 			if (player.speedX == 0.0f) {
 				vayeate[i].speedX = vayeate[i].speedX * -1;
 			}
-			else{ vayeate[i].speedX = player.speedX * -.33; }
+			else { vayeate[i].speedX = vayeate[i].speedX * -1; }
 			if (player.speedY == 0.0f) {
 				vayeate[i].speedY = vayeate[i].speedY * -1;
 			}
-			else { vayeate[i].speedY = player.speedY * -.33; }
+			else { vayeate[i].speedY = vayeate[i].speedY * -1; }
 		}
 		
 		for (size_t j = 0; j < ground.size(); j++) {
@@ -605,28 +582,22 @@ void Update(float elapsed) {
 //Initializes Entities, controls, and starts game
 void runGame() {
 	//initialize Player
-	player = Entity(0.0f, -1.50f, 0.0f / 1024.0f, 0.0f / 1024.0f, 93.0f / 1024.0f, 98.0f / 1024.0f, 
+	player = Entity(0.0f, 1.50f, 0.0f / 1024.0f, 0.0f / 1024.0f, 93.0f / 1024.0f, 98.0f / 1024.0f, 
 		0.0f, 0.0f, 3.0f, 3.0f, 0.0f, 0.0f, 0.0f);
 	//initalize Vayeates
 	for (int i = 0; i < 2; i++) {
-		vayeate.push_back(Entity(-1.25f + (i * -1.0f) , 1.0f + (i * -1.0f),
-			0.0f / 1024.0f, 100.0f / 1024.0f, 79.0f / 1024.0f, 100.0f / 1024.0f, -1.0f, 1.0f, 3.0f + (i * 1.0f),
-			3.0f + (i * 1.0f), 0.0f, 0.0f, .435f + (i*.435f)));
-		vayeate.push_back(Entity(1.25f + (i * 1.0f), 1.0f + (i * -1.0f),
-			0.0f / 1024.0f, 100.0f / 1024.0f, 79.0f / 1024.0f, 100.0f / 1024.0f, 1.0f, 1.0f, 3.0f + (i * 1.0f),
-			3.0f + (i * 1.0f), 0.0f, 0.0f, .835f + (i*.835f)));
+		vayeate.push_back(Entity(-2.0f + (i * -1.0f) , 0.0f + (i * -1.0f),
+			0.0f / 1024.0f, 100.0f / 1024.0f, 79.0f / 1024.0f, 100.0f / 1024.0f, -1.0f, 1.0f, 4.0f + (i * 1.0f),
+			4.0f + (i * 1.0f), 0.0f, 0.0f, 0.0f + (i*.435f)));
+		vayeate.push_back(Entity(2.0f + (i * 1.0f), 0.0f + (i * -1.0f),
+			0.0f / 1024.0f, 100.0f / 1024.0f, 79.0f / 1024.0f, 100.0f / 1024.0f, 1.0f, 1.0f, 4.0f + (i * 1.0f),
+			4.0f + (i * 1.0f), 0.0f, 0.0f, .435f + (i*.835f)));
 	}
 	//initalize Platforms
-	
-	for (int i = 0; i < 41; i++) {
-		ground.push_back(Entity(-4.0f + (i) * 0.2f, -2.15f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f));
-		ground.push_back(Entity(-4.0f + (i) * 0.2f, 2.15f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f));
-
-	}
-	for (int i = 0; i < 24; i++) {
-		ground.push_back(Entity(-4.0f, -2.25 + (i) * 0.2f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f));
-		ground.push_back(Entity(4.0, -2.25 + (i) * 0.2f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f));
-	}
+	ground.push_back(Entity(0.0f, -2.15f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 41.0f, 1.0f, 0.0f, 0.0f, 0.0f));
+	ground.push_back(Entity(0.0f,  2.15f, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 41.0f, 1.0f, 0.0f, 0.0f, 0.0f));
+	ground.push_back(Entity(-3.90f, 0, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 34.0f, 0.0f, 0.0f, 0.0f));
+	ground.push_back(Entity(3.90, 0, 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f, 34.0f, 0.0f, 0.0f, 0.0f));
 
 	
 	Matrix space;
