@@ -1,0 +1,7 @@
+﻿  main.cpp
+c:\users\kevin to\documents\github\kevintocs3113\hw6\nyucodebase\main.cpp(102): warning C4018: '<': signed/unsigned mismatch
+c:\users\kevin to\documents\github\kevintocs3113\hw6\nyucodebase\main.cpp(376): warning C4018: '<': signed/unsigned mismatch
+c:\users\kevin to\documents\github\kevintocs3113\hw6\nyucodebase\main.cpp(475): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+c:\users\kevin to\documents\github\kevintocs3113\hw6\nyucodebase\main.cpp(545): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+  NYUCodebase.vcxproj -> C:\Users\Kevin To\Documents\GitHub\KevinTOCS3113\HW6\Debug\NYUCodebase.exe
+  NYUCodebase.vcxproj -> C:\Users\Kevin To\Documents\GitHub\KevinTOCS3113\HW6\Debug\NYUCodebase.pdb (Full PDB)

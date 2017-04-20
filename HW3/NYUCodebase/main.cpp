@@ -1,7 +1,7 @@
 /*
 Kevin To CS3113 Homework 3
 Gundam Defenders "Space Invaders"
-• Make Spac`e Invaders
+• Make Space Invaders
 • It must have 2 states: TITLE SCREEN, GAME
 • It must display text
 • It must use sprite sheets
@@ -463,18 +463,6 @@ void runGame() {
 		vayeate.push_back(Entity(0.7 + (i % 5) * 0.7, 2.0 - (i / 5 * 0.7),
 			0.0f / 1024.0f, 100.0f / 1024.0f, 79.0f / 1024.0f, 100.0f / 1024.0f, 0.03f, 1.0f,2.5f));
 	}
-	//initalize Ground
-	for (int i = 0; i < 55; i++) {
-		ground.push_back(Entity(-2.5f + (i) * 0.2f, 0.0f - (4 * 0.5f), 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f,1.0f));
-	}
-
-	for (int i = 0; i < 4; i++) {
-		ground.push_back(Entity(-2.0f + (i)* 0.2f, 0.0f - (1 * 0.5f), 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f));
-	}
-
-	for (int i = 0; i < 4; i++) {
-		ground.push_back(Entity(1.0f + (i)* 0.2f, -1.8f, , 0.0f / 1024.0f, 258.0f / 1024.0f, 70.0f / 1024.0f, 70.0f / 1024.0f, 0.0f, 0.0f, 1.0f));
-	}
 
 	Matrix space;
 	SDL_Event event;
@@ -562,7 +550,7 @@ int main(int argc, char *argv[])
 
 	//load sprite sheets and textures
 	fontSheet = LoadTexture(RESOURCE_FOLDER"font1.png");
-	spriteSheet = LoadTexture(RESOURCE_FOLDER"sprites.png");
+	spriteSheet = LoadTexture(RESOURCE_FOLDER"robo1024.png");
 	background = LoadTexture(RESOURCE_FOLDER"space.png");
 
 	runGame();
