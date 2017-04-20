@@ -1,6 +1,6 @@
 /*
-Kevin To CS3113 Homework 3
-Gundam Defenders "Space Invaders"
+Kevin To CS3113 Homework 6
+Gundam Defenders "Space Invaders" With Sound
 • Make Space Invaders
 • It must have 2 states: TITLE SCREEN, GAME
 • It must display text
